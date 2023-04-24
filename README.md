@@ -10,11 +10,13 @@ is_prime_wc (worst case) performs minimal branching, zero trial division and ret
 It is intended as a fast check of numbers that are already likely to be prime (aka the worst case complexity)
 
 Worst-case  2xFermat_test
+
 Average-case 2xFermat_test
 
 is_prime_ac (average case) utilizes trial division and branching to ensure that the results are correct and efficiently evaluated in the average case
 
 Worst-case 2.4xFermat_test
+
 Average-case 0.3xFermat_test
 
 
