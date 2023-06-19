@@ -38,7 +38,7 @@ Tiny simply uses the Fermat bases implemented in Small, the only difference ther
  
  To use from crates.io, simply include it in your cargo.toml file with the feature "small" or "tiny" if you want those versions. Default will be the fastest with the hashtable.
  
- To use as a dynamic library, make sure you are running rustc nightly; `git clone` this repository and run `make` to compile the Default mode, `make small` for the Small mode and `make tiny` for the Tiny mode. This will create the library, and `make install` will install it to `/usr/lib/libprime.so`. (Make sure you are superuser). Installing the library is recommended but not strictly necessary. 
+ To use as a dynamic library, make sure you are running rustc nightly; `git clone` this repository and run `make` to compile the Default mode, `make small` for the Small mode and `make tiny` for the Tiny mode. This will create the library, and `make install` will install it to `/usr/lib/libprime.so`. (Make sure you are superuser). Installing the library is recommended but not strictly necessary. Link to it using ``-lprime`` if you are using gcc. 
 
 ## Purpose
 Many number-theoretic functions either require a primality test or use a primality test for greater efficiency. Examples include the Legendre symbol and factorization.While primality testing is rarely the bottleneck for these functions, it is a limiting factor in highly
