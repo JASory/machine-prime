@@ -15,17 +15,17 @@ Three modes are available for these functions, Default and Small and Tiny. Memor
 
 The Default utilizes a large hashtable, and trial division by prime inverse multiplication
 
- - is_prime complexity: Worst-case 2.4 * Fermat test, Average-case 0.3 * Fermat test
- - is-prime_wc complexity: Worst-case 2 * Fermat test, Average-case 2 * fermat test
- - is_prime_wc failures : perfect powers of 2
+ - is_prime complexity: Worst-case 2.23 * Fermat test, Average-case 0.3 * Fermat test
+ - is-prime_wc complexity: Worst-case 2 * Fermat test, Average-case 1.2* fermat test
+ - is_prime_wc failures : perfect powers of 2, 1, panics at 0
  - Hashtable constructed by f-analysis' `to_hashtable(Some(262144),Some(1069587295),Some(65535))`. Compute the base-2 strong pseudoprimes to Feitsma's table 
    and apply the hashtable method to reproduce the hashtable used. See the "hashtable" example in f-analysis for an explicit implementation. 
  - Total memory: 1050752 bytes
  
 Small forgoes the hashtable but still uses the trial division
-  - is_prime complexity: Worst-case 8.4 * Fermat test, Average case 
-  - is-prime_wc complexity: Worst case 8 * Fermat test, Average-case 8 * Fermat test
-  - is_prime_wc failures: Perfect powers of 2, 
+  - is_prime complexity: Worst-case 8.23 * Fermat test, Average case 0.567 * Fermat test
+  - is-prime_wc complexity: Worst case 8 * Fermat test, Average-case 1.31 * Fermat test
+  - is_prime_wc failures: Perfect powers of 2,1, panics at 0 
   - Fermat bases constructed using f-analysis `iter_sprp_search(80)`, on the set of base-2 strong pseudoprimes
   - Fermat bases used: 2,60,52,37,79,29,41,55
 
