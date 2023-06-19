@@ -34,6 +34,7 @@ Tiny simply uses the Fermat bases implemented in Small, the only difference ther
 
 ## Usage
  Due to some barriers to compiling no-std libraries, the version in crates.io and the repository are slightly different, although using the exact same algorithms. 
+ crates.io version is configured for stable compilers, while the repository is configured for nightly compiler, as the intention is to use it to build dynamic libraries. 
  
  To use from crates.io, simply include it in your cargo.toml file with the feature "small" or "tiny" if you want those versions. Default will be the fastest with the hashtable.
  
