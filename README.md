@@ -1,41 +1,58 @@
 Machine prime is a simple efficient primality test for 64-bit integers, 
-derived from algorithms used in the [number-theory](https://crates.io/crates/number-theory) crate
+constructed in a reproducible manner with the [f-analysis](https://github.com/JASory/f-analysis) library, 
+and Feitsma/Galway's base-2 pseudoprime table. (Note that while f-analysis does use this library, it is not a circular dependency as it is not actually used in the computations to produce the fermat bases or hashtable. It is primarily to strip primes from a set of integers before evaluation, and some heuristic pseudoprime generation)
 
-Two functions are provided with a C-style api to enable calling in other languages
+Two functions are provided with a C-style api to enable calling in other languages.
 
- is_prime and is_prime_wc
+- is_prime
+- is_prime_wc (worst case)
 
-is_prime_wc (worst case) performs minimal branching, zero trial division, panics at zero and returns incorrect results for 
-1, and powers of 2
-It is intended as a fast check of numbers that are already likely to be prime (aka the worst case complexity)
+is_prime is optimised for the average case and is intended as a general primality test. is_prime_wc is optimised for the worst case and is intended to be used in functions that the number is already suspected to be prime. for instance factorisation where trial division has already been performed. It performs absolutely minimal checks, and is permitted to have a handful of known failure points leaving it up to the user to decide if it is necessary to expend the cost to check for them.
 
-Worst-case  2xFermat_test
-Average-case 2xFermat_test
+This function api will never change. is_prime will always correctly evaluate any 64-bit integer, however is_prime_wc  failure points may change.
 
-is_prime (average case) utilizes trial division and branching to ensure that the results are correct and efficiently evaluated in the average case
+Three modes are available for these functions, Default and Small and Tiny. Memory use decreases but the complexity increases with each successive mode. 
 
-Worst-case 2.4xFermat_test
-Average-case 0.3xFermat_test
+The Default utilizes a large hashtable, and trial division by prime inverse multiplication
 
-
-This is fairly close to the optimal in practice. An implementation using less than 2 fermat tests 
-would require very large amounts of memory, that would bottleneck performance. 
-
-Total Memory used:  1050752 bytes
-
-Requires 
- x86-64 architecture, preferably with 128-bit arithmetic support for efficiency purposes
+ - is_prime complexity: Worst-case 2.4 * Fermat test, Average-case 0.3 * Fermat test
+ - is-prime_wc complexity: Worst-case 2 * Fermat test, Average-case 2 * fermat test
+ - is_prime_wc failures : perfect powers of 2
+ - Hashtable constructed by f-analysis' `to_hashtable(Some(262144),Some(1069587295),Some(65535))`. Compute the base-2 strong pseudoprimes to Feitsma's table 
+   and apply the hashtable method to reproduce the hashtable used. See the "hashtable" example in f-analysis for an explicit implementation. 
+ - Total memory: 1050752 bytes
  
-This library (unlike number-theory) does not implement the most efficient implementation for all integers,
-but rather a simpler one that is efficient in the entire interval.This can actually result in faster average
-case, due to eliminating branching. number-theory (and an upcoming crate) will be faster for integers less than 2^35. 
-However this is only 1/2^29 th of the interval meaning that the branching would be too great a penalty for the majority of calls.
+Small forgoes the hashtable but still uses the trial division
+  - is_prime complexity: Worst-case 8.4 * Fermat test, Average case 
+  - is-prime_wc complexity: Worst case 8 * Fermat test, Average-case 8 * Fermat test
+  - is_prime_wc failures: Perfect powers of 2, 
+  - Fermat bases constructed using f-analysis `iter_sprp_search(80)`, on the set of base-2 strong pseudoprimes
+  - Fermat bases used: 2,60,52,37,79,29,41,55
+
+Tiny simply uses the Fermat bases implemented in Small, the only difference therefore between is_prime and is_prime_wc is the latter forgoes any additional checks to ensure correctness. It saves a small amount of memory over Small. 
+
+
+## Usage
+ Due to some barriers to compiling no-std libraries, the version in crates.io and the repository are slightly different, although using the exact same algorithms. 
  
-Purpose: 
-Many number theoretic functions either require a primality test or use a primality test for greater
-efficiency (Legendre symbol, factorization).
-While primality testing is rarely the bottleneck for these functions, it is a limiting factor in highly
+ To use from crates.io, simply include it in your cargo.toml file with the feature "small" or "tiny" if you want those versions. Default will be the fastest with the hashtable.
+ 
+ To use as a dynamic library, make sure you are running rustc nightly; `git clone` this repository and run `make` to compile the Default mode, `make small` for the Small mode and `make tiny` for the Tiny mode. This will create the library, and `make install` will install it to `/usr/lib/libprime.so`. (Make sure you are superuser). Installing the library is recommended but not strictly necessary. 
+
+## Purpose
+Many number-theoretic functions either require a primality test or use a primality test for greater efficiency. Examples include the Legendre symbol and factorization.While primality testing is rarely the bottleneck for these functions, it is a limiting factor in highly
 optimized computations. By providing an fast public domain implementation that can be  called in many languages and architectures, 
 the work towards constructing such a function is minimised.
 
-Note: This is tied with Forisek & Jancina's [FJ64_262K.cc](https://people.ksp.sk/~misof/primes/FJ64_262K.cc) implementation for theoretical worst-case complexity, however machine-prime is considerably faster (3x <) in actual implementation, due to 128-bit arithmetic, Hensel lifting and prime-inverses. 
+## Notes
+This primality test is not intended to be the fastest in every interval, but rather faster in general and the average case. There are small tests that are faster for 32-bit, however this is such a miniscule interval that branching to account for them would result in a reduction in efficiency in general. 
+
+There are fast functions that can be used to optimise  for memory better. However, they use floating point arithmetic. The intent of this library is to be extremely fast, but flexible enough to be used wherever integer arithmetic is supported. This is why low-memory variants are also supported.Not every user can , or wants to, use nearly a mebibyte of memory.
+
+The Small and Tiny modes use 8 fermat bases instead of the minimum 7 bases because the 7-base set has large factors, making it more difficult to correct for. 
+
+Future variants will likely use a Lucas pseudoprime test for the low-memory modes. Euler_Plumb may be investigated as a replacement for the 2-sprp check. 
+
+The Default mode is currently tied with Forisek & Jancina's [FJ64_262K.cc](https://people.ksp.sk/~misof/primes/FJ64_262K.cc) implementation for theoretical worst-case complexity, however machine-prime is considerably faster (3x <) in actual implementation, due to 128-bit arithmetic, Hensel lifting and prime-inverses.
+
+This software is in public domain, and all the values can be deterministically recomputed using the open-source auditable f-analysis library.
