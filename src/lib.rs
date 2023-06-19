@@ -1,15 +1,30 @@
+// No std needs to be commented out for stable rustc to compile it
+
+
+/* Comment out for crates publication */
+
 #![no_std]
+#![feature(lang_items)]
+
+/* end publication comment out*/
 
 pub(crate) mod check;
 pub(crate) mod hashbase;
 pub(crate) mod primes;
-pub use check::is_prime_ac;
+
+pub use check::is_prime;
 pub use check::is_prime_wc;
 
+/*  Comment out for crates publication */
 
-// This function is called on panic.
-#[cfg(no_std)]
 #[panic_handler]
 fn panic(_info: &core::panic::PanicInfo) -> ! {
     loop {}
 }
+
+
+#[lang = "eh_personality"]
+extern "C" fn eh_personality() {}
+
+/* End comment out*/
+

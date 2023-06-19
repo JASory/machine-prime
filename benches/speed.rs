@@ -1,5 +1,4 @@
-use machine_prime::is_prime_wc;
-use machine_prime::is_prime_ac;
+use machine_prime::{is_prime,is_prime_wc};
 
 // Benchmarking the average in the strongest interval
 // Real implementation will likely be faster 
@@ -10,7 +9,7 @@ fn bench_average(){
    let start = std::time::Instant::now();
    let mut count = 0;
    for i in (u64::MAX-DELTA)..u64::MAX{
-      if is_prime_ac(i){
+      if is_prime(i){
         count+=1
       }
    }

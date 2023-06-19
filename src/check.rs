@@ -1,14 +1,31 @@
-use crate::primes::{INV_8,PRIME_INV_64,PRIME_INV_128};
+#[cfg(not(any(feature="small",feature="tiny")))]
 use crate::hashbase::FERMAT_BASE;
+
+#[cfg(not(feature="tiny"))]
+use crate::primes::{INV_8,PRIME_INV_64,PRIME_INV_128};
+
 
 
  fn mod_inv(n: u64) -> u64 {
-    // inverse of odd n in  2^64
+    
+     #[cfg(feature="tiny")]
+    {
+    let mut est = (3*n)^2;
+    est = 2u64.wrapping_sub(est.wrapping_mul(n)).wrapping_mul(est);
+    est = 2u64.wrapping_sub(est.wrapping_mul(n)).wrapping_mul(est);
+    est = 2u64.wrapping_sub(est.wrapping_mul(n)).wrapping_mul(est);
+    est = 2u64.wrapping_sub(est.wrapping_mul(n)).wrapping_mul(est);
+    est.wrapping_neg()
+    }
+    
+    #[cfg(not(feature="tiny"))]
+    {
     let mut est = INV_8[((n >> 1) & 0x7F) as usize] as u64;
     est = 2u64.wrapping_sub(est.wrapping_mul(n)).wrapping_mul(est);
     est = 2u64.wrapping_sub(est.wrapping_mul(n)).wrapping_mul(est);
     est = 2u64.wrapping_sub(est.wrapping_mul(n)).wrapping_mul(est);
     est.wrapping_neg()
+    }
 }
 
 fn mont_prod_64(x: u64 , y: u64, n: u64, npi: u64) -> u64 {
@@ -25,6 +42,7 @@ fn mont_prod_64(x: u64 , y: u64, n: u64, npi: u64) -> u64 {
     t
     } 
  }
+ 
 
  fn sprp(p: u64, base: u64) -> bool {
     let p_minus = p - 1;
@@ -70,7 +88,7 @@ fn mont_prod_64(x: u64 , y: u64, n: u64, npi: u64) -> u64 {
 /// Primality testing optimized for the average case in the interval 0;2^64. 
 /// Approximately 5 times faster than is_prime_wc in the average case, but slightly slower in the worst case
 #[no_mangle]
-pub extern "C" fn is_prime_ac(x: u64) -> bool {
+pub extern "C" fn is_prime(x: u64) -> bool {
         if x == 1{
           return false
         }
@@ -80,7 +98,8 @@ pub extern "C" fn is_prime_ac(x: u64) -> bool {
         if x & 1 == 0 {
             return false;
         }
-
+       #[cfg(not(feature="tiny"))]
+       {
         if x < 0x5A2553748E42E8 {
             for i in PRIME_INV_64.iter() {
              let prod = x.wrapping_mul(*i);
@@ -100,13 +119,10 @@ pub extern "C" fn is_prime_ac(x: u64) -> bool {
                 }
             }
         }
+        
+        } // end conditional block
+         is_prime_wc(x)
 
-        if !sprp(x,2u64){
-            return false;
-        }
-
-        let idx = ((x as u32).wrapping_mul(942441121)>>14) as usize;
-        sprp(x,FERMAT_BASE[idx] as u64)
     }
 /// Primality testing for the worst case. Panics at zero, flags 1 as prime, flags powers of 2 as prime.  
 /// This option is intended for proving primality for integers that have already been checked using simpler methods.
@@ -115,12 +131,36 @@ pub extern "C" fn is_prime_ac(x: u64) -> bool {
 /// Approximately 13% faster against primes than is_prime_ac
 #[no_mangle]
 pub extern "C" fn is_prime_wc(x: u64) -> bool { 
-
+        
+        /* 
+        Checks that x is odd for debugging purposes
+        compiled library from Makefile does not have this check
+        */
+        debug_assert!(x&1==1); 
+        
         if !sprp(x,2u64){
             return false;
         }
+        
+        #[cfg(not(any(feature="small",feature="tiny")))]
+     {
 
-        let idx = ((x as u32).wrapping_mul(942441121)>>14) as usize;
-        sprp(x,FERMAT_BASE[idx] as u64)
+        let idx = ((x as u32).wrapping_mul(1069587295)>>14) as usize;
+        return sprp(x,FERMAT_BASE[idx] as u64)
+     }
+     
+        #[cfg(any(feature="small",feature="tiny"))]
+    {
+      if x < 2046 {
+         return true
+      }
+      
+      for i in [60, 52, 37, 79, 29, 41, 55].iter(){
+         if !sprp(x,*i){
+           return false
+         }
+      }
+      return true
+    }    
 }   
     

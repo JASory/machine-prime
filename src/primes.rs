@@ -1,4 +1,5 @@
 #[rustfmt::skip]
+#[cfg(not(feature="tiny"))]
 pub(crate) const INV_8 : [u8; 128] = [
 
     0x01, 0xAB, 0xCD, 0xB7, 0x39, 0xA3, 0xC5, 0xEF, 0xF1, 0x1B, 0x3D, 0xA7, 0x29, 0x13, 0x35, 0xDF,
@@ -13,6 +14,7 @@ pub(crate) const INV_8 : [u8; 128] = [
 ];
 
 #[rustfmt::skip]
+#[cfg(not(feature="tiny"))]
 pub(crate) const PRIME_INV_64 : [u64;256] = [
 
  	   0xaaaaaaaaaaaaaaab ,   0xcccccccccccccccd ,   0x6db6db6db6db6db7 ,   0x2e8ba2e8ba2e8ba3 ,
@@ -82,6 +84,7 @@ pub(crate) const PRIME_INV_64 : [u64;256] = [
 	  ];
 	  
 #[rustfmt::skip] 
+#[cfg(not(feature="tiny"))]
 pub(crate) const PRIME_INV_128 : [u128;128] = [
 
  	  0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab ,  0xcccccccccccccccccccccccccccccccd ,  
