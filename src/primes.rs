@@ -82,7 +82,7 @@ pub(crate) const PRIME_INV_64 : [u64;256] = [
 	   0x9aed1436fbf500cf ,   0x7839b54cc8b24115 ,   0xc128c646ad0309c1 ,   0x14de631624a3c377 ,
 	   0x3f7b9fe68b0ecbf9 ,   0x284ffd75ec00a285 ,   0x37803cb80dea2ddb ,   0x86b63f7c9ac4c6fd 
 	  ];
-	  
+
 #[rustfmt::skip] 
 #[cfg(not(feature="tiny"))]
 pub(crate) const PRIME_INV_128 : [u128;128] = [

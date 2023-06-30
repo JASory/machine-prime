@@ -1,6 +1,5 @@
 // No std needs to be commented out for stable rustc to compile it
 
-
 /* Comment out for crates publication */
 
 #![no_std]
@@ -27,4 +26,3 @@ fn panic(_info: &core::panic::PanicInfo) -> ! {
 extern "C" fn eh_personality() {}
 
 /* End comment out*/
-
