@@ -1,13 +1,13 @@
 Machine prime is a simple efficient primality test for 64-bit integers, 
 constructed in a reproducible manner with the [f-analysis](https://github.com/JASory/f-analysis) library, 
-and Feitsma/Galway's base-2 pseudoprime table. (Note that while f-analysis does use this library, it is not a circular dependency as it is not actually used in the computations to produce the fermat bases or hashtable. It is primarily to strip primes from a set of integers before evaluation, and some heuristic pseudoprime generation)
+and Feitsma/Galway's base-2 pseudoprime table. (Note that while f-analysis does use this library, it is not a circular dependency as it is not actually used in the computations to produce the fermat bases or hashtable. It is primarily to strip primes from a set of integers before evaluation, and some heuristic pseudoprime generation).
 
 Two functions are provided with a C-style api to enable calling in other languages.
 
 - is_prime
 - is_prime_wc (worst case)
 
-is_prime is optimised for the average case and is intended as a general primality test. is_prime_wc is optimised for the worst case and is intended to be used in functions that the number is already suspected to be prime. for instance factorisation where trial division has already been performed. It performs absolutely minimal checks, and is permitted to have a handful of known failure points leaving it up to the user to decide if it is necessary to expend the cost to check for them.
+is_prime is optimised for the average case and is intended as a general primality test. is_prime_wc is optimised for the worst case and is intended to be used in functions that the number is already suspected to be prime. For instance factorisation where trial division has already been performed. It performs absolutely minimal checks, and is permitted to have a handful of known failure points leaving it up to the user to decide if it is necessary to expend the cost to check for them.
 
 This function api will never change. is_prime will always correctly evaluate any 64-bit integer, however is_prime_wc  failure points may change.
 
@@ -16,18 +16,18 @@ Three modes are available for these functions, Default and Small and Tiny. Memor
 The Default utilizes a large hashtable, and trial division by prime inverse multiplication
 
  - is_prime complexity: Worst-case 2.23 * Fermat test, Average-case 0.3 * Fermat test
- - is-prime_wc complexity: Worst-case 2 * Fermat test, Average-case 1.2* fermat test
- - is_prime_wc failures : perfect powers of 2, 1, panics at 0
- - Hashtable constructed by f-analysis' `to_hashtable(Some(262144),Some(1069587295),Some(65535))`. Compute the base-2 strong pseudoprimes to Feitsma's table 
-   and apply the hashtable method to reproduce the hashtable used. See the "hashtable" example in f-analysis for an explicit implementation. 
- - Total memory: 1050752 bytes
+ - is-prime_wc complexity: Worst-case 1.95 * Fermat test, Average-case 1.2* fermat test
+ - is_prime_wc failures : Panics at 0, flags 1 as prime, 2 as composite
+ - Hashtable constructed by f-analysis' `to_hashtable(Some(262144),Some(1276800789),Some(65535))`. 
+   Compute the EPF pseudoprimes to Feitsma's table and apply the hashtable method to reproduce the 
+   hashtable used. See the "hashtable" example in f-analysis for an explicit implementation. 
+ - Total memory: 526464 bytes
  
 Small forgoes the hashtable but still uses the trial division
-  - is_prime complexity: Worst-case 8.23 * Fermat test, Average case 0.567 * Fermat test
-  - is-prime_wc complexity: Worst case 8 * Fermat test, Average-case 1.31 * Fermat test
-  - is_prime_wc failures: Perfect powers of 2,1, panics at 0 
-  - Fermat bases constructed using f-analysis `iter_sprp_search(80)`, on the set of base-2 strong pseudoprimes
-  - Fermat bases used: 2,60,52,37,79,29,41,55
+  - is_prime complexity: Worst-case 2.8 * Fermat test, Average case < 0.567 * Fermat test
+  - is-prime_wc complexity: Worst case 2.5 * Fermat test, Average-case < 1.31 * Fermat test
+  - is_prime_wc failures: Panics at 0, flags 1 as prime, 2 as composite
+  - Uses a modified Lucas sequence test in addition to the initial fermat test 
 
 Tiny simply uses the Fermat bases implemented in Small, the only difference therefore between is_prime and is_prime_wc is the latter forgoes any additional checks to ensure correctness. It saves a small amount of memory over Small. 
 
@@ -48,12 +48,13 @@ the work towards constructing such a function is minimised.
 ## Notes
 This primality test is not intended to be the fastest in every interval, but rather faster in general and the average case. There are small tests that are faster for 32-bit, however this is such a miniscule interval that branching to account for them would result in a reduction in efficiency in general. 
 
-There are fast functions that can be used to optimise  for memory better. However, they use floating point arithmetic. The intent of this library is to be extremely fast, but flexible enough to be used wherever integer arithmetic is supported. This is why low-memory variants are also supported.Not every user can , or wants to, use nearly a mebibyte of memory.
+There are fast functions that can be used to optimise  for memory better. However, they use floating point arithmetic. The intent of this library is to be extremely fast, but flexible enough to be used when only integer arithmetic is supported. Consequently, floating point arithmetic, inline assembly and SIMD are not utilised. Additionally this is why low memory variants are provided, as not everyone is able or willing to use over 500 kilobytes of memory.
 
-The Small and Tiny modes use 8 fermat bases instead of the minimum 7 bases because the 7-base set has large factors, making it more difficult to correct for. 
+Approximate size of the binary dynamic library varies with your compiler however the following are reasonable estimates: Default-542.4kb, Small-18.1kb, Tiny-14kb
 
-Future variants will likely use a Lucas pseudoprime test for the low-memory modes. Euler_Plumb may be investigated as a replacement for the 2-sprp check. 
+Building for non-Linux, and embedded systems has not been tested, however there is no known cause for failure.   
 
-The Default mode is currently tied with Forisek & Jancina's [FJ64_262K.cc](https://people.ksp.sk/~misof/primes/FJ64_262K.cc) implementation for theoretical worst-case complexity, however machine-prime is considerably faster (3x <) in actual implementation, due to 128-bit arithmetic, Hensel lifting and prime-inverses.
+
+The default mode has marginally lower theoretical worst-case complexity than Forisek & Jancina's [FJ64_262K.cc](https://people.ksp.sk/~misof/primes/FJ64_262K.cc) similar hashtable implementation, however machine-prime is considerably faster (3x <) in actual implementation, due to 128-bit arithmetic, Hensel lifting and prime-inverses.
 
 This software is in public domain, and all the values can be deterministically recomputed using the open-source auditable f-analysis library.
