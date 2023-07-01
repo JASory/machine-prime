@@ -219,8 +219,32 @@ fn sprp(p: u64, base: u64) -> bool {
     false
 }
 
+fn core_primality(x: u64) -> bool{
+
+  if !euler_p(x) {
+        return false;
+    }
+    
+  #[cfg(not(any(feature = "small", feature = "tiny")))]
+    {
+        let idx = ((x as u32).wrapping_mul(1276800789) >> 14) as usize;
+         sprp(x, FERMAT_BASE[idx] as u64)
+    }
+
+    #[cfg(any(feature = "small", feature = "tiny"))]
+    {
+        if x < 1729 {
+            return true;
+        }
+
+        lucas(x)
+    }  
+    
+}
+
+
 /// Primality testing optimized for the average case in the interval 0;2^64.
-/// Approximately 5 times faster than is_prime_wc in the average case, but slightly slower in the worst case
+/// Approximately 5 times faster than is_prime_wc in the average case, but slightly slower in the worst case.
 #[no_mangle]
 pub extern "C" fn is_prime(x: u64) -> bool {
     if x == 1 {
@@ -268,41 +292,29 @@ pub extern "C" fn is_prime(x: u64) -> bool {
         }
     } // end conditional block
 
-    is_prime_wc(x)
+    core_primality(x)
 }
 
-/// Primality testing for the worst case. Panics at zero, flags 1 as prime.Some even
-/// numbers may be flagged as prime, although no known even numbers are. Reduced memory variants, infinitely loop at the perfect squares 1194649,12327121    
-/// This option is intended for proving primality for integers that have already been checked using simpler methods.
+/// Primality testing for the worst case. Panics at zero, flags 1 as prime, 2 as composite. Reduced memory variants 
+/// infinitely loop if the input is one of the perfect squares 1194649 or 12327121.This option is intended for proving 
+/// primality for integers that have already been checked using simpler methods.
 /// For example one could generate random integers without small factors and then prove that they are prime faster than with
 /// is_prime. Other applications include checking primality within a factorization function.
-/// Approximately 13% faster against primes than is_prime_ac
+/// Approximately 13% faster against primes than is_prime. 
 #[no_mangle]
 pub extern "C" fn is_prime_wc(x: u64) -> bool {
     /*
-    Alerts for the failure points, these do not apply to is_prime however it will alert regardless
+    Alerts for the failure points
     compiled library from Makefile does not have this check
     */
      debug_assert!(x !=1 && x !=2 && x !=0);
-
-    if !euler_p(x) {
-        return false;
-    }
-
-    #[cfg(not(any(feature = "small", feature = "tiny")))]
-    {
-        let idx = ((x as u32).wrapping_mul(1276800789) >> 14) as usize;
-        return sprp(x, FERMAT_BASE[idx] as u64);
-    }
-
-    #[cfg(any(feature = "small", feature = "tiny"))]
-    {
-        if x < 1729 {
-            return true;
-        }
-        
-        debug_assert!(x != 1194649 && x != 12327121);
-
-        lucas(x)
-    }
+     
+     #[cfg(any(feature = "small", feature = "tiny"))]
+     {
+     debug_assert!(x != 1194649 && x != 12327121);
+     }
+  
+      core_primality(x)
 }
+
+
