@@ -43,6 +43,8 @@ by the Makefile will not panic for any.
  
  To use as a dynamic library, make sure you are running rustc nightly; `git clone` this repository and run `make` to compile the Default mode, `make small` for the Small mode and `make tiny` for the Tiny mode. This will create the library, and `make install` will install it to `/usr/lib/libprime.so`. (Make sure you are superuser). Installing the library is recommended but not strictly necessary. Link to it using ``-lprime`` if you are using gcc. 
 
+See the "binding" folder in the repository for various language bindings. C, Fortran, Julia and Python are supported. 
+
 ## Purpose
 Many number-theoretic functions either require a primality test or use a primality test for greater efficiency. Examples include the Legendre symbol and factorization.While primality testing is rarely the bottleneck for these functions, it is a limiting factor in highly
 optimized computations. By providing an fast public domain implementation that can be  called in many languages and architectures, 
