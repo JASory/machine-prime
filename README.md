@@ -1,6 +1,6 @@
 Machine prime is a simple efficient primality test for 64-bit integers, 
 constructed in a reproducible manner with the [f-analysis](https://github.com/JASory/f-analysis) library, 
-and Feitsma/Galway's base-2 pseudoprime table. (Note that while f-analysis does use this library, it is not a circular dependency as it is not actually used in the computations to produce the fermat bases or hashtable. It is primarily to strip primes from a set of integers before evaluation, and some heuristic pseudoprime generation)
+and Feitsma/Galway's base-2 pseudoprime table. It is [available on crates.io](https://crates.io/crates/machine-prime). (Note that while f-analysis does use this library, it is not a circular dependency as it is not actually used in the computations to produce the fermat bases or hashtable. It is primarily to strip primes from a set of integers before evaluation, and some heuristic pseudoprime generation)
 
 Two functions are provided with a C-style api to enable calling in other languages.
 
