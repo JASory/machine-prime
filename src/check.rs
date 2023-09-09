@@ -4,7 +4,8 @@ use crate::hashbase::FERMAT_BASE;
 #[cfg(not(feature = "tiny"))]
 use crate::primes::{INV_8, PRIME_INV_128, PRIME_INV_64};
 
-fn mod_inv(n: u64) -> u64 {
+
+ fn mod_inv(n: u64) -> u64 {
     #[cfg(feature = "tiny")]
     {
         let mut est = (3 * n) ^ 2;
@@ -25,11 +26,13 @@ fn mod_inv(n: u64) -> u64 {
     }
 }
 
-fn mont_prod(x: u64, y: u64, n: u64, npi: u64) -> u64 {
+
+ fn mont_prod(x: u64, y: u64, n: u64, npi: u64) -> u64 {
     let interim = x as u128 * y as u128;
     let tm = (interim as u64).wrapping_mul(npi);
     let (t, flag) = interim.overflowing_add((tm as u128) * (n as u128));
     let t = (t >> 64) as u64;
+    
     if flag {
         t + n.wrapping_neg()
     } else if t >= n {
@@ -91,14 +94,14 @@ fn param_search(n: u64) -> u64 {
             break;
         }
         p += 1;
-    }
+    } 
     p
 }
 
 // Only Small and Tiny modes use Lucas sequence test
 // Perfect squares that fail 1194649, 12327121,
 #[cfg(any(feature = "small", feature = "tiny"))]
- fn lucas(n: u64) -> bool {
+ fn lucas(n: u64, npi: u64) -> bool {
     let param = param_search(n);
     let s = (n + 1).trailing_zeros();
     let d = (n + 1) >> s;
@@ -108,7 +111,6 @@ fn param_search(n: u64) -> u64 {
     let m_2 = ((2u128 << 64) % (n as u128)) as u64;
     let m_2_inv = ((((n - 2) as u128) << 64) % (n as u128)) as u64;
     
-    let npi = mod_inv(n);
     let mut w = mont_sub(mont_prod(m_param, m_param, n, npi), m_2, n);
     let mut v = m_param;
     let b = 64 - d.leading_zeros();
@@ -141,8 +143,23 @@ fn param_search(n: u64) -> u64 {
     false
 }
 
+fn mont_pow(mut base: u64, mut one: u64, mut p: u64, n: u64, npi: u64) -> u64 {
+    
+  while p > 1 {
+        if p & 1 == 0 {
+            base = mont_prod(base, base, n, npi);
+            p >>= 1;
+        } else {
+            one = mont_prod(one, base, n, npi);
+            base = mont_prod(base, base, n, npi);
+            p = (p - 1) >> 1;
+        }
+    }
+    mont_prod(one, base, n, npi)
+}
+
 // All modes call this function
-fn euler_p(p: u64) -> bool {
+fn euler_p(p: u64, one: u64, npi: u64) -> bool {
     let res = p & 7;
     let mut param = 0;
 
@@ -150,27 +167,14 @@ fn euler_p(p: u64) -> bool {
         param = 1;
     }
 
-    let npi = mod_inv(p);
-
     let mut result = (((2u128) << 64) % (p as u128)) as u64;
-    let mut z = (u64::MAX % p) + 1;
-    let mut d = (p - 1) >> (1 + param);
 
-    while d > 1 {
-        if d & 1 == 0 {
-            result = mont_prod(result, result, p, npi);
-            d >>= 1;
-        } else {
-            z = mont_prod(z, result, p, npi);
-            result = mont_prod(result, result, p, npi);
-            d = (d - 1) >> 1;
-        }
-    }
+    let d = (p - 1) >> (1 + param);
 
-    result = mont_prod(z, result, p, npi);
+    result = mont_pow(result,one,d,p,npi);
 
     result = mont_prod(result, 1, p, npi);
-
+ 
     if result == 1 {
         return res == 1 || res == 7;
     } else if result == p - 1 {
@@ -179,32 +183,20 @@ fn euler_p(p: u64) -> bool {
     false
 }
 
+
+
 // Only the Default mode calls this function
 #[cfg(not(any(feature = "small", feature = "tiny")))]
-fn sprp(p: u64, base: u64) -> bool {
+fn sprp(p: u64, base: u64, one: u64, npi: u64) -> bool {
     let p_minus = p - 1;
     let twofactor = p_minus.trailing_zeros();
-    let mut d = p_minus >> twofactor;
+    let d = p_minus >> twofactor;
 
-    let npi = mod_inv(p);
-    let one = (u64::MAX % p) + 1;
-    let mut z = one;
     let mut result = (((base as u128) << 64) % (p as u128)) as u64;
     let oneinv = (((p_minus as u128) << 64) % (p as u128)) as u64;
 
-    while d > 1 {
-        if d & 1 == 0 {
-            result = mont_prod(result, result, p, npi);
-            d >>= 1;
-        } else {
-            z = mont_prod(z, result, p, npi);
-            result = mont_prod(result, result, p, npi);
-            d = (d - 1) >> 1;
-        }
-    }
-
-    result = mont_prod(z, result, p, npi);
-
+    result = mont_pow(result,one,d,p,npi);
+    
     if result == one || result == oneinv {
         return true;
     }
@@ -221,14 +213,17 @@ fn sprp(p: u64, base: u64) -> bool {
 
 fn core_primality(x: u64) -> bool{
 
-  if !euler_p(x) {
+  let npi = mod_inv(x);
+  let one = (u64::MAX % x) + 1;
+  
+  if !euler_p(x,one,npi) {
         return false;
     }
     
   #[cfg(not(any(feature = "small", feature = "tiny")))]
     {
         let idx = ((x as u32).wrapping_mul(1276800789) >> 14) as usize;
-         sprp(x, FERMAT_BASE[idx] as u64)
+         sprp(x, FERMAT_BASE[idx] as u64, one,npi)
     }
 
     #[cfg(any(feature = "small", feature = "tiny"))]
@@ -237,7 +232,7 @@ fn core_primality(x: u64) -> bool{
             return true;
         }
 
-        lucas(x)
+        lucas(x,npi)
     }  
     
 }
@@ -316,5 +311,4 @@ pub extern "C" fn is_prime_wc(x: u64) -> bool {
   
       core_primality(x)
 }
-
 
