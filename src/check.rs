@@ -2,7 +2,7 @@
 use crate::hashbase::FERMAT_BASE;
 
 #[cfg(not(feature = "tiny"))]
-use crate::primes::{INV_8, PRIME_INV_128, PRIME_INV_64};
+use crate::primes::{INV_8,PRIME_INV_64};
 
 
  fn mod_inv(n: u64) -> u64 {
@@ -42,7 +42,21 @@ use crate::primes::{INV_8, PRIME_INV_128, PRIME_INV_64};
     }
 }
 
-#[cfg(any(feature = "small", feature = "tiny"))]
+fn to_normal_form(x: u64, n: u64, npi: u64) -> u64{
+    let tm = x.wrapping_mul(npi);
+    let (t, flag) = (x as u128).overflowing_add((tm as u128) * (n as u128));
+    let t = (t >> 64) as u64;
+    
+    if flag {
+        t + n.wrapping_neg()
+    } else if t >= n {
+        t - n
+    } else {
+        t
+    }
+}
+
+
 fn mont_sub(x: u64, y: u64, n: u64) -> u64 {
     if y > x {
         return n.wrapping_sub(y.wrapping_sub(x));
@@ -101,7 +115,7 @@ fn param_search(n: u64) -> u64 {
 // Only Small and Tiny modes use Lucas sequence test
 // Perfect squares that fail 1194649, 12327121,
 #[cfg(any(feature = "small", feature = "tiny"))]
- fn lucas(n: u64, npi: u64) -> bool {
+ fn lucas(n: u64,npi: u64) -> bool {
     let param = param_search(n);
     let s = (n + 1).trailing_zeros();
     let d = (n + 1) >> s;
@@ -143,6 +157,9 @@ fn param_search(n: u64) -> u64 {
     false
 }
 
+//  In: 
+// Out:
+
 fn mont_pow(mut base: u64, mut one: u64, mut p: u64, n: u64, npi: u64) -> u64 {
     
   while p > 1 {
@@ -156,7 +173,7 @@ fn mont_pow(mut base: u64, mut one: u64, mut p: u64, n: u64, npi: u64) -> u64 {
         }
     }
     mont_prod(one, base, n, npi)
-}
+} 
 
 // All modes call this function
 fn euler_p(p: u64, one: u64, npi: u64) -> bool {
@@ -166,14 +183,14 @@ fn euler_p(p: u64, one: u64, npi: u64) -> bool {
     if res == 1 {
         param = 1;
     }
-
-    let mut result = (((2u128) << 64) % (p as u128)) as u64;
-
+      // Montgomery form of 2
+    let mut result = one.wrapping_add(one);
+   
     let d = (p - 1) >> (1 + param);
 
     result = mont_pow(result,one,d,p,npi);
 
-    result = mont_prod(result, 1, p, npi);
+    result = to_normal_form(result,p,npi);//mont_prod(result, 1, p, npi);
  
     if result == 1 {
         return res == 1 || res == 7;
@@ -192,10 +209,13 @@ fn sprp(p: u64, base: u64, one: u64, npi: u64) -> bool {
     let twofactor = p_minus.trailing_zeros();
     let d = p_minus >> twofactor;
 
-    let mut result = (((base as u128) << 64) % (p as u128)) as u64;
-    let oneinv = (((p_minus as u128) << 64) % (p as u128)) as u64;
-
+    let mut result = mont_prod(base,one,p,npi);//(((base as u128) << 64) % (p as u128)) as u64;
+    
+    
+    let oneinv = mont_prod(mont_sub(p,one,p),one,p,npi);
+    
     result = mont_pow(result,one,d,p,npi);
+    
     
     if result == one || result == oneinv {
         return true;
@@ -222,16 +242,12 @@ fn core_primality(x: u64) -> bool{
     
   #[cfg(not(any(feature = "small", feature = "tiny")))]
     {
-        let idx = ((x as u32).wrapping_mul(1276800789) >> 14) as usize;
+        let idx = (x as u32).wrapping_mul(1276800789).wrapping_shr(14) as usize;
          sprp(x, FERMAT_BASE[idx] as u64, one,npi)
     }
 
     #[cfg(any(feature = "small", feature = "tiny"))]
     {
-        if x < 1729 {
-            return true;
-        }
-
         lucas(x,npi)
     }  
     
@@ -265,8 +281,10 @@ pub extern "C" fn is_prime(x: u64) -> bool {
 
     #[cfg(not(feature = "tiny"))]
     {
-        // Perform trial division if not Tiny mode
-        if x < 0x5A2553748E42E8 {
+     const TRIAL_BOUND : u64 = 55730344633563600;
+     
+     if x < TRIAL_BOUND {
+     
             for i in PRIME_INV_64.iter() {
                 let prod = x.wrapping_mul(*i);
                 if prod == 1 {
@@ -276,15 +294,88 @@ pub extern "C" fn is_prime(x: u64) -> bool {
                     return false;
                 }
             }
+     }       
+    
+     if x >  TRIAL_BOUND {
+     
+      let interim = x%13082761331670030u64;
+        
+        for i in PRIME_INV_64[..13].iter(){
+           if interim.wrapping_mul(*i) < interim{
+             return false
+           }
+        }
+        
+        let interim = x%10575651537777253u64;
+        
+        for i in PRIME_INV_64[13..21].iter(){
+           if interim.wrapping_mul(*i) < interim{
+             return false
+           }
+        }
+        
+        let interim = x%9823972789433423u64;
+        
+        for i in PRIME_INV_64[21..29].iter(){
+           if interim.wrapping_mul(*i) < interim{
+             return false
+           }
+        }
+        
+        
+        let interim = x%805474958639317u64;
+        
+        for i in PRIME_INV_64[29..35].iter(){
+           if interim.wrapping_mul(*i) < interim{
+             return false
+           }
+        }
+       
+        let interim = x%4575249731290429u64;
+        
+        for i in PRIME_INV_64[35..42].iter(){
+           if interim.wrapping_mul(*i) < interim{
+             return false
+           }
+        }
+        
+       
+        let interim = x%18506541671175721u64;
+        
+        for i in PRIME_INV_64[42..49].iter(){
+           if interim.wrapping_mul(*i) < interim{
+             return false
+           }
+        }
+        
+        let interim = x%61247129307885343u64;
+        
+        for i in PRIME_INV_64[49..56].iter(){
+           if interim.wrapping_mul(*i) < interim{
+             return false
+           }
+        }
+        
+        
+        let interim = x%536967265590991u64;
+        
+        for i in PRIME_INV_64[56..62].iter(){
+           if interim.wrapping_mul(*i) < interim{
+             return false
+           }
+        }
+        
+        
+        let interim = x%1194404299990379u64;
+        
+        for i in PRIME_INV_64[62..].iter(){
+           if interim.wrapping_mul(*i) < interim{
+             return false
+           }
         }
 
-        if x > 0x5A2553748E42E8 {
-            for i in PRIME_INV_128.iter() {
-                if ((x as u128).wrapping_mul(*i)) < x as u128 {
-                    return false;
-                }
-            }
-        }
+        } //end if
+        
     } // end conditional block
 
     core_primality(x)
@@ -311,4 +402,5 @@ pub extern "C" fn is_prime_wc(x: u64) -> bool {
   
       core_primality(x)
 }
+
 
