@@ -1,6 +1,6 @@
 [package]
 name = "machine-prime"
-version = "1.2.1"
+version = "1.2.2"
 edition = "2021"
 author = ["JASory jasory@rust-cas.org"]
 description = "ne plus ultra primality testing for machine-sized integers"
@@ -27,5 +27,3 @@ harness=false
 [features]
 small = [] # No hashtable but trial division
 tiny = [] # No hashtable or trial division
-
-
