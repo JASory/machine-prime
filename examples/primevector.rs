@@ -21,8 +21,9 @@ use machine_prime::is_prime;
   but small set of primes frequently, we can store them
   as we encounter them and perform a faster lookup
   
-  Unfortunately Machine-prime is fast enough that this optimization 
-  only works around less than 150K primes. Slower checks like used in primal crate will perform 
+  Unfortunately Machine-prime is fast enough that this optimisation 
+  only works around less than 150K primes. Slower checks like used in primal crate
+  will benefit more from this optimisation.
 */
 
 struct PrimeVector{
@@ -158,11 +159,13 @@ fn main(){
   let mut count = 0u64;
   
   let start = std::time::Instant::now();
+   
   for i in INF..SUP{
      if is_prime(i){
        count+=1;
      }
   }
+   
   let stop = start.elapsed();
   println!("{} primes counted in {:?} using plain Machine-prime",count,stop);
   
@@ -171,39 +174,50 @@ fn main(){
      prime_checker.check(i);
   }
   
-  count=0u64;
+   count=0u64;
+   
   let start = std::time::Instant::now();
+   
   for i in INF..SUP{
      if prime_checker.check(i){
        count+=1;
      }
   }
+   
   let stop = start.elapsed();
+   
     println!("{} primes counted in {:?} using a hashset, and machine-prime",count,stop);
+   
   let mut count = 0u64;
+   
   let P = PrimeIter::new(2);
     let start = std::time::Instant::now();
+   
   for primes in P.iter(){
    count+=1;
     if count > 1_000_000{
        break;
     }
   }
+   
     let stop = start.elapsed();
   println!("Sequentially generated 1 million primes in t: {:?}",stop);
   
   // Some candidate factors for base 15 fermat pseudoprimes
   let candidate_15 = ResiduePrime::<1,29130>::new(1).unwrap();
+   
       let start = std::time::Instant::now();
       let mut count = 0u64;
+   
   for i in candidate_15{
-  count+=1;
+    count+=1;
    if i > 1u64<<32{
       break;
    }
   }
+   
   let stop = start.elapsed();
+   
   println!("Found all {} fermat pseudoprime candidates to base-15 of the form 29131n where n is prime under {} in t: {:?}",count,29131*(1u64<<32),stop);
    
 }
-
