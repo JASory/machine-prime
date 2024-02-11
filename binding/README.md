@@ -1,6 +1,6 @@
 These are bindings to machine-prime for various languages. Most languages that support generic integers have generic implementations 
 written for them, keep in mind that these are all direct calls so signed integers or 128-bit or larger integers will be passed directly
-and return erroneous results,this however is not an issue for Ada as it is limited to 64-bit by design and the generics only accept modular types.
+and return erroneous values.
 
 Each file is for a different language. They contain instructions on how to compile and link to the machine-prime library. 
 These all assume that it was compiled and saved as `/lib/libprime.so`
