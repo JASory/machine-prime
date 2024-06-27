@@ -1,6 +1,9 @@
 #[cfg(not(any(feature = "small", feature = "tiny")))]
 use crate::hashbase::FERMAT_BASE;
 
+#[cfg(feature ="ssmr")]
+use crate::hashbase::FERMAT_BASE_40;
+
 #[cfg(not(feature = "tiny"))]
 use crate::primes::{INV_8,PRIME_INV_64};
 
@@ -157,6 +160,8 @@ fn param_search(n: u64) -> u64 {
     false
 }
 
+
+
 //  In: 
 // Out:
 
@@ -177,6 +182,7 @@ fn mont_pow(mut base: u64, mut one: u64, mut p: u64, n: u64, npi: u64) -> u64 {
 
 // All modes call this function
 fn euler_p(p: u64, one: u64, npi: u64) -> bool {
+//    panic!("NOP E_P");
     let res = p & 7;
     let mut param = 0;
 
@@ -209,8 +215,7 @@ fn sprp(p: u64, base: u64, one: u64, npi: u64) -> bool {
     let twofactor = p_minus.trailing_zeros();
     let d = p_minus >> twofactor;
 
-    let mut result = mont_prod(base,one,p,npi);//(((base as u128) << 64) % (p as u128)) as u64;
-    
+    let mut result = base.wrapping_mul(one);
     
     let oneinv = mont_prod(mont_sub(p,one,p),one,p,npi);
     
@@ -235,11 +240,19 @@ fn core_primality(x: u64) -> bool{
 
   let npi = mod_inv(x);
   let one = (u64::MAX % x) + 1;
+ 
+ #[cfg(feature="ssmr")]
+ {
+   if x < 1099720565341{
+    let idx = (x as u32).wrapping_mul(2202620065).wrapping_shr(19) as usize;
+    return sprp(x, FERMAT_BASE_40[idx] as u64, one,npi)
+   }
+ }
+
+  if !euler_p(x,one,npi){
+     return false;
+  }
   
-  if !euler_p(x,one,npi) {
-        return false;
-    }
-    
   #[cfg(not(any(feature = "small", feature = "tiny")))]
     {
         let idx = (x as u32).wrapping_mul(1276800789).wrapping_shr(14) as usize;
