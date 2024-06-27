@@ -1,6 +1,6 @@
 @echo off
  mkdir libprime
- echo Select 1  for Default, 2 for Small, or 3  for Tiny
+ echo Select 1  for Default, 2 for Small, 3  for Tiny, 4 for SSMR
  set /p flag=""
  if %flag%==1 (rustc -C opt-level="3" src/lib.rs -o libprime/prime.dll --crate-type cdylib --target x86_64-pc-windows-msvc
  echo Built the Default variant)
@@ -8,4 +8,6 @@
  echo Built the Small variant) 
  if %flag%==3 (rustc -C opt-level="3" src/lib.rs -o libprime/prime.dll --crate-type cdylib --target x86_64-pc-windows-msvc --cfg feature=\"tiny\"
  echo Built the Tiny variant)
+ if %flag%==3 (rustc -C opt-level="3" src/lib.rs -o libprime/prime.dll --crate-type cdylib --target x86_64-pc-windows-msvc --cfg feature=\"ssmr\"
+ echo Built the SSMR variant) 
 pause

@@ -1,5 +1,5 @@
 Machine prime is a simple efficient primality test for 64-bit integers, 
-constructed in a reproducible manner with the [f-analysis](https://github.com/JASory/f-analysis) library, 
+constructed in a reproducible manner with the [F-Analysis](https://github.com/JASory/f-analysis) library, 
 and Feitsma/Galway's base-2 pseudoprime table. It is [available on crates.io](https://crates.io/crates/machine-prime).
 
 Two functions are provided with a C-style api to enable calling in other languages.
@@ -23,6 +23,12 @@ The Default utilizes a large hashtable, and trial division by prime inverse mult
    hashtable used. See the "hashtable" example in f-analysis for an explicit implementation. 
  - Total memory: 526464 bytes
  
+SSMR is identical to Default but branches to use the SSMR algorithm for integers less than 2^40
+ - The parameters and failure cases are identical to the SSMR crate
+ - Due to branching, cache-utilisation and calculation modifications, it is slower than the SSMR crate
+ - Only use this variant if the SSMR crate doesn't provide a large enough interval
+ 
+ 
 Small forgoes the hashtable but still uses the trial division
   - is_prime complexity: Worst-case 2.8 * Fermat test, Average case < 0.567 * Fermat test
   - is-prime_wc complexity: Worst case 2.5 * Fermat test, Average-case < 1.31 * Fermat test
@@ -30,6 +36,7 @@ Small forgoes the hashtable but still uses the trial division
   - Uses a modified Lucas sequence test in addition to the initial fermat test 
 
 Tiny simply uses the Fermat bases implemented in Small, the only difference therefore between is_prime and is_prime_wc is the latter forgoes any additional checks to ensure correctness. It saves a small amount of memory over Small. 
+
 
 Note that all failures will panic in debug mode but are overridden by optimization, the dynamic library produced
 by the Makefile will not panic for any. 
@@ -42,8 +49,6 @@ by the Makefile will not panic for any.
  To use from crates.io, simply include it in your cargo.toml file with the feature "small" or "tiny" if you want those versions. Default will be the fastest with the hashtable.
  
  To use as a dynamic library, make sure you are running rustc nightly; `git clone` this repository and run `make` to compile the Default mode, `make small` for the Small mode and `make tiny` for the Tiny mode. This will create the library, and `make install` will install it to `/lib/libprime.so`. (Make sure you are superuser). Installing the library is recommended but not strictly necessary. Link to it using ``-lprime`` if you are using gcc. 
-
-Alternately, if on Windows, use the batch file. 
 
 See the ["binding"](https://github.com/JASory/machine-prime/tree/main/binding) folder in the repository for various language bindings. Several languages including Ada,C,Fortran,Julia, and Python are supported. 
 

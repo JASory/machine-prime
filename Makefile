@@ -10,6 +10,10 @@ tiny: src/lib.rs
 	rustc -C opt-level="3" src/lib.rs -o libprime.so --crate-type cdylib --target x86_64-unknown-linux-gnu --cfg 'feature="tiny"'
 	strip libprime.so
 	
+ssmr: src/lib.rs
+	rustc -C opt-level="3" src/lib.rs -o libprime.so --crate-type cdylib --target x86_64-unknown-linux-gnu --cfg 'feature="ssmr"'
+	strip libprime.so
+	
 install: libprime.so
 	install libprime.so /lib/libprime.so
 	
