@@ -14,7 +14,7 @@ The benchmarking is performed by starting from the 2^n and counting down 100 mil
 - Mp (Worst Case) Identical to Mp Small, except calling is_prime_wc. This performs zero trial division (the only test here that omits it) making it the worst possible test for checking random integers. It is however faster against primes, this benchmark is meant to show that slowest possible implementation. 
 
 
-All other publicly available primality tests are believed to be considerably slower, often by orders of magnitude. (Note Bradley Berg's algorithm would in theory be comparable to other algorithms here, however as noted elsewhere by Sory, the algorithm parameters are incorrect and only correct implementations are in consideration).
+All other publicly available primality tests are believed to be considerably slower, often by orders of magnitude. (Note Bradley Berg's algorithm would in theory be comparable to other algorithms here, however the algorithm parameters are incorrect. Additionally SSMR is not included either as it is only valid for much smaller intervals). 
 
 ## Result
 
