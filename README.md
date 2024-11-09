@@ -1,69 +1,76 @@
-Machine prime is a simple efficient primality test for 64-bit integers, 
-constructed in a reproducible manner with the [F-Analysis](https://github.com/JASory/f-analysis) library, 
-and Feitsma/Galway's base-2 pseudoprime table. It is [available on crates.io](https://crates.io/crates/machine-prime).
+Machine prime is a simple, efficient primality test for 64-bit integers, targeting research applications and casual use. 
 
-Two functions are provided with a C-style api to enable calling in other languages.
+
+Two functions are provided with a C-style api to enable calling in other languages. Both can be called in const contexts.
 
 - is_prime
 - is_prime_wc (worst case)
 
-is_prime is optimised for the average case and is intended as a general primality test. is_prime_wc is optimised for the worst case and is intended to be used in functions that the number is already suspected to be prime. For instance factorisation where trial division has already been performed. It performs absolutely minimal checks, and is permitted to have a handful of known failure points leaving it up to the user to decide if it is necessary to expend the cost to check for them.
+is_prime is optimised for the average case and is intended as a general primality test. is_prime_wc is optimised for
+the worst case and is intended to be used in functions that the number is already suspected to be prime.It performs
+absolutely minimal checks, and is permitted to have a handful of known failure points leaving it up to the user to
+decide if it is necessary to expend the cost to check for them.
 
-This function api will never change. is_prime will always correctly evaluate any 64-bit integer, however is_prime_wc  failure points may change.
+This function api will never change. is_prime will always correctly evaluate any 64-bit integer, however is_prime_wc
+failure points may change.See source code or documentation for a list of these failure points. 
 
-Three modes are available for these functions, Default and Small and Tiny. Memory use decreases but the complexity increases with each successive mode. 
+Four modes are available for these functions, Default, SSMR and Small and Tiny. Memory use decreases but the complexity
+increases with each successive mode. 
 
-The Default utilizes a large hashtable, and trial division by prime inverse multiplication
-
- - is_prime complexity: Worst-case 2.23 * Fermat test, Average-case 0.28 * Fermat test
- - is-prime_wc complexity: Worst-case 1.95 * Fermat test, Average-case 1.2* fermat test
- - is_prime_wc failures : Panics at 0, flags 1 as prime, 2 as composite, 
- - Hashtable constructed by f-analysis' `to_hashtable(Some(262144),Some(1276800789),Some(65535))`. 
-   Compute the EPF pseudoprimes to Feitsma's table and apply the hashtable method to reproduce the 
-   hashtable used. See the "hashtable" example in f-analysis for an explicit implementation. 
- - Total memory: 526464 bytes
- 
-SSMR is identical to Default but branches to use the SSMR algorithm for integers less than 2^40
- - The parameters and failure cases are identical to the SSMR crate
- - Due to branching, cache-utilisation and calculation modifications, it is slower than the SSMR crate
- - Only use this variant if the SSMR crate doesn't provide a large enough interval
- 
- 
-Small forgoes the hashtable but still uses the trial division
-  - is_prime complexity: Worst-case 2.8 * Fermat test, Average case < 0.567 * Fermat test
-  - is-prime_wc complexity: Worst case 2.5 * Fermat test, Average-case < 1.31 * Fermat test
-  - is_prime_wc failures: Panics at 0, flags 1 as prime, 2 as composite, 1194649 and 12327121 infinitely loop
-  - Uses a modified Lucas sequence test in addition to the initial fermat test 
-
-Tiny simply uses the Fermat bases implemented in Small, the only difference therefore between is_prime and is_prime_wc is the latter forgoes any additional checks to ensure correctness. It saves a small amount of memory over Small. 
-
-
-Note that all failures will panic in debug mode but are overridden by optimization, the dynamic library produced
-by the Makefile will not panic for any. 
-
+SSMR is the fastest for small values (n< 2^45) but may be slower than Default for larger values (n > 2^45). This is 
+the recommended version to be used, since most applications are going to be smaller primes, and is_prime_wc is nearly
+twice as fast for (n < 2^45).    
 
 ## Usage
- Due to some barriers to compiling no-std libraries, the version in crates.io and the repository are slightly different, although using the exact same algorithms. 
- crates.io version is configured for stable compilers, while the repository is configured for nightly compiler, as the intention is to use it to build dynamic libraries. 
+ Due to some barriers to compiling no-std libraries, the version in crates.io and the repository are slightly different,
+ although using the exact same algorithms. crates.io version is configured for stable compilers, while the repository 
+ is configured for nightly compiler, as the intention is to use it to build dynamic libraries. 
  
- To use from crates.io, simply include it in your cargo.toml file with the feature "small" or "tiny" if you want those versions. Default will be the fastest with the hashtable.
+ To use from crates.io, simply include it in your cargo.toml file with the feature "ssmr","small" or "tiny" if you want those versions. 
  
- To use as a dynamic library, make sure you are running rustc nightly; `git clone` this repository and run `make` to compile the Default mode, `make small` for the Small mode and `make tiny` for the Tiny mode. This will create the library, and `make install` will install it to `/lib/libprime.so`. (Make sure you are superuser). Installing the library is recommended but not strictly necessary. Link to it using ``-lprime`` if you are using gcc. 
+ To use as a dynamic library, make sure you are running rustc nightly; `git clone` this repository and run `make`
+ to compile the Default mode, 'make ssmr' for the SSMR mode, `make small` for the Small mode and `make tiny` for
+ the Tiny mode. This will create the library, and `make install` will install it to `/lib/libprime.so`. 
+ (Make sure you are superuser). Installing the library is recommended but not strictly necessary. Link to it using 
+ ``-lprime`` if you are using gcc. 
 
-See the ["binding"](https://github.com/JASory/machine-prime/tree/main/binding) folder in the repository for various language bindings. Several languages including Ada,C,Fortran,Julia, and Python are supported. 
+Alternately, if on Windows, use the provided batch file. 
 
-## Purpose
-Many number-theoretic functions either require a primality test or use a primality test for greater efficiency. Examples include the Legendre symbol and factorization.While primality testing is rarely the bottleneck for these functions, it is a limiting factor in highly
-optimized computations. By providing an fast public domain implementation that can be  called in many languages and architectures, 
-the work towards constructing such a function is minimised.
+See the ["binding"](https://github.com/JASory/machine-prime/tree/main/binding) folder in the repository for 
+various language bindings. Several languages including the following are supported. 
+- Ada
+- C/C++
+- Fortran
+- Haskell
+- Julia
+- Python
 
-## Notes
-This primality test is not intended to be the fastest in every interval, but rather faster in general and the average case. There are small tests that are faster for 32-bit, however this is such a miniscule interval that branching to account for them would result in a reduction in efficiency in general. See [Performance](https://github.com/JASory/machine-prime/blob/main/PERFORMANCE.md) for some benchmarks and comparison to other efficient primality tests. 
+## Applications
+  Due to Machine-primes speed, quite a few applications can be found for it, including in research projects.
+  
+  is_prime
+  - Searching for primes, particularly in intervals that would require large computations for sieves, or primes out of sequence. 
+  - Searching for "rare" forms of primes, used to construct Carmichael numbers, Monier-Rabin semiprimes and other special composites.
+  
+is_prime_wc is much more useful as it is faster against numbers that are already very likely to be prime
 
-There are fast functions that can be used to optimise  for memory better. However, they use floating point arithmetic. The intent of this library is to be extremely fast, but flexible enough to be used when only integer arithmetic is supported. Consequently, floating point arithmetic, inline assembly and SIMD are not utilised. Additionally this is why low memory variants are provided, as not everyone is able or willing to use over 500 kilobytes of memory.
+  - Factorisation; determining that the factors returned are actually primes, and when to halt the factorisation
+  - Legendre symbol
+  - Verifying Erastothenes sieves, and other primality tests; checking that prime_test(n) == is_prime_wc(n)
+  - Verifying small primes used in prime certification, like the Pratt certificate
+  - Searching for Fermat pseudoprimes; verifying that certain numbers that satisfy a^(n-1) mod n =1 are infact composite
+  
+##  Notes
+See [Performance](https://github.com/JASory/machine-prime/blob/main/PERFORMANCE.md) for some benchmarks and 
+comparison to other efficient primality tests. 
 
-Approximate size of binary dynamic library varies with your compiler however the following are reasonable estimates: Default-542.4kb, Small-18.1kb, Tiny-14kb
+Approximate size of binary dynamic library varies with your compiler however the following are reasonable estimates:
+- Default/SSMR-542.4kb
+- Small-18.1kb
+- Tiny-14kb
 
 Building for embedded systems has not been tested, however there is no known cause for failure.
 
-This software is in public domain, and all the values can be deterministically recomputed using the open-source auditable f-analysis library.
+This software is in public domain, and can be constructed in a reproducible manner with the 
+[f-analysis](https://github.com/JASory/f-analysis) library, and Feitsma/Galway's base-2 
+pseudoprime table. It is [available on crates.io](https://crates.io/crates/machine-prime)
