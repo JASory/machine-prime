@@ -1,138 +1,185 @@
 #[cfg(not(any(feature = "small", feature = "tiny")))]
 use crate::hashbase::FERMAT_BASE;
 
-#[cfg(feature ="ssmr")]
-use crate::hashbase::FERMAT_BASE_40;
-
 #[cfg(not(feature = "tiny"))]
-use crate::primes::{INV_8,PRIME_INV_64};
+use crate::primes::{INV_8, PRIME_INV_64};
 
+#[cfg(feature = "small")]
+use crate::primes::LUCAS_PARAM;
 
- fn mod_inv(n: u64) -> u64 {
+//  In:  n \in 2Z + 1
+// Out: n^-1
+const fn mod_inv(n: u64) -> u64 {
     #[cfg(feature = "tiny")]
     {
-        let mut est = (3 * n) ^ 2;
+        let mut est: u64 = 3u64.wrapping_mul(n) ^ 2;
         est = 2u64.wrapping_sub(est.wrapping_mul(n)).wrapping_mul(est);
         est = 2u64.wrapping_sub(est.wrapping_mul(n)).wrapping_mul(est);
         est = 2u64.wrapping_sub(est.wrapping_mul(n)).wrapping_mul(est);
         est = 2u64.wrapping_sub(est.wrapping_mul(n)).wrapping_mul(est);
-        est.wrapping_neg()
+        est
     }
 
     #[cfg(not(feature = "tiny"))]
     {
-        let mut est = INV_8[((n >> 1) & 0x7F) as usize] as u64;
+        let mut est: u64 = INV_8[((n >> 1) & 0x7F) as usize] as u64;
         est = 2u64.wrapping_sub(est.wrapping_mul(n)).wrapping_mul(est);
         est = 2u64.wrapping_sub(est.wrapping_mul(n)).wrapping_mul(est);
         est = 2u64.wrapping_sub(est.wrapping_mul(n)).wrapping_mul(est);
-        est.wrapping_neg()
+        est
     }
 }
 
+//
+const fn mont_prod(x: u64, y: u64, n: u64, npi: u64) -> u64 {
+    let interim: u128 = (x as u128).wrapping_mul(y as u128);
+    let lo: u64 = (interim as u64).wrapping_mul(npi);
+    let lo: u64 = ((lo as u128).wrapping_mul(n as u128) >> 64) as u64;
+    let hi: u64 = (interim >> 64) as u64;
 
- fn mont_prod(x: u64, y: u64, n: u64, npi: u64) -> u64 {
-    let interim = x as u128 * y as u128;
-    let tm = (interim as u64).wrapping_mul(npi);
-    let (t, flag) = interim.overflowing_add((tm as u128) * (n as u128));
-    let t = (t >> 64) as u64;
-    
-    if flag {
-        t + n.wrapping_neg()
-    } else if t >= n {
-        t - n
+    if hi < lo {
+        hi.wrapping_sub(lo).wrapping_add(n)
     } else {
-        t
+        hi.wrapping_sub(lo)
     }
 }
 
-fn to_normal_form(x: u64, n: u64, npi: u64) -> u64{
-    let tm = x.wrapping_mul(npi);
-    let (t, flag) = (x as u128).overflowing_add((tm as u128) * (n as u128));
-    let t = (t >> 64) as u64;
-    
-    if flag {
-        t + n.wrapping_neg()
-    } else if t >= n {
-        t - n
-    } else {
-        t
-    }
+const fn to_z(x: u64, n: u64, npi: u64) -> u64 {
+    let lo: u64 = x.wrapping_mul(npi);
+    let lo: u64 = ((lo as u128).wrapping_mul(n as u128) >> 64) as u64;
+
+    lo.wrapping_neg().wrapping_add(n)
 }
 
-
-fn mont_sub(x: u64, y: u64, n: u64) -> u64 {
+// In: X,Y,N
+// Out: X-Y mod N
+const fn mont_sub(x: u64, y: u64, n: u64) -> u64 {
     if y > x {
         return n.wrapping_sub(y.wrapping_sub(x));
     }
     x.wrapping_sub(y)
 }
 
+//  In: A,K
+// Out: Jacobi(A,K) == -1
 #[cfg(any(feature = "small", feature = "tiny"))]
-fn jacobi(a: u64, k: u64) -> i8 {
+const fn jacobi(a: u64, k: u64) -> bool {
     let mut n = a;
     let mut p = k;
-    let mut t = 1i8;
-    n %= p;
+    let mut t = false;
 
     while n != 0 {
         let zeros = n.trailing_zeros();
         n >>= zeros;
-
-        if (p % 8 == 3 || p % 8 == 5) && (zeros % 2 == 1) {
-            t = -t
-        }
+           
+        if (p&7 == 3 || p&7 == 5) && (zeros&1 == 1) {
+            t^=true;
+         }
         
+        if p&3 == 3 && n&3 == 3 {
+            t^=true;
+        }
+
         let interim = p;
         p = n;
         n = interim;
 
-        if n % 4 == 3 && p % 4 == 3 {
-            t = -t;
-        }
         n %= p;
     }
 
     if p == 1 {
         t
     } else {
-        0
+        false
     }
 }
 
+//  In: N
+// Out: x := jacobi(x*x-4,N) == -1
 #[cfg(any(feature = "small", feature = "tiny"))]
-fn param_search(n: u64) -> u64 {
-    let mut d: u64;
-    let mut p = 3;
+const fn param_search(n: u64) -> u64 {
+    #[cfg(feature = "small")]
+    {
+        let rem = n % 5;
 
-    loop {
-        d = p * p - 4;
-        let sym = jacobi(d, n);
-        if sym == -1 {
-            break;
+        if rem == 3 || rem == 2 {
+            return 3;
         }
-        p += 1;
-    } 
-    p
+
+        let rem = n % 12;
+
+        if rem == 2 || rem == 5 || rem == 7 || rem == 8 {
+            return 4;
+        }
+
+        let rem = n % 21;
+
+        if rem == 2 || rem == 8 || rem == 11 || rem == 10 || rem == 13 || rem == 19 {
+            return 5;
+        }
+
+        let mut idx: usize = 0;
+
+        while idx < 27 {
+            let i = LUCAS_PARAM[idx] as u64;
+            if jacobi(i.wrapping_mul(i).wrapping_sub(4u64), n){
+                return i;
+            }
+            idx += 1;
+        }
+        0u64
+    }
+
+    #[cfg(feature = "tiny")]
+    {
+        let mut d: u64;
+        let mut p = 3u64;
+        loop {
+            d = p.wrapping_mul(p).wrapping_sub(4);
+            if jacobi(d,n){
+                break;
+            }
+            p += 1;
+        }
+        p
+    }
 }
 
 // Only Small and Tiny modes use Lucas sequence test
-// Perfect squares that fail 1194649, 12327121,
+// Perfect squares that fail 1194649, 12327121
 #[cfg(any(feature = "small", feature = "tiny"))]
- fn lucas(n: u64,npi: u64) -> bool {
+const fn lucas(n: u64, one: u64, npi: u64) -> bool {
     let param = param_search(n);
-    let s = (n + 1).trailing_zeros();
-    let d = (n + 1) >> s;
 
+    #[cfg(feature = "small")]
+    {
+        if param == 0 {
+            return true;
+        }
+    }
+    
+    let n_plus = n.wrapping_add(1);
+    let s = n_plus.trailing_zeros();
+    let d = n_plus.wrapping_shr(s);
+     // Almost works
+
+   // let m_param = mont_prod(param.wrapping_mul(one), one, n, npi);
+   // let two = one.wrapping_add(one);
+   // let m_2 = mont_prod(two, one, n, npi);
+   // let m_2_inv = mont_prod(mont_sub(n, two, n), one, n, npi);
     // Montgomery forms of starting parameter, 2, and n-2
     let m_param = (((param as u128) << 64) % (n as u128)) as u64;
     let m_2 = ((2u128 << 64) % (n as u128)) as u64;
-    let m_2_inv = ((((n - 2) as u128) << 64) % (n as u128)) as u64;
+    let m_2_inv = (((n.wrapping_sub(2) as u128) << 64) % (n as u128)) as u64;
     
     let mut w = mont_sub(mont_prod(m_param, m_param, n, npi), m_2, n);
     let mut v = m_param;
-    let b = 64 - d.leading_zeros();
 
-    for i in 2..(b + 1) {
+    let b = 64u32.wrapping_sub(d.leading_zeros());
+
+    let mut i = 2;
+
+    while i < (b.wrapping_add(1)) {
         let t = mont_sub(mont_prod(v, w, n, npi), m_param, n);
 
         if (d >> (b - i)) & 1 == 1 {
@@ -142,13 +189,16 @@ fn param_search(n: u64) -> u64 {
             w = t;
             v = mont_sub(mont_prod(v, v, n, npi), m_2, n);
         }
+        i += 1;
     }
 
     if v == m_2 || v == m_2_inv {
         return true;
     }
 
-    for _ in 1..s {
+    let mut counter = 1;
+
+    while counter < s {
         if v == 0 {
             return true;
         }
@@ -156,18 +206,16 @@ fn param_search(n: u64) -> u64 {
         if v == m_2 {
             return false;
         }
+        counter += 1;
     }
     false
 }
 
-
-
 //  In: 
 // Out:
 
-fn mont_pow(mut base: u64, mut one: u64, mut p: u64, n: u64, npi: u64) -> u64 {
-    
-  while p > 1 {
+const fn mont_pow(mut base: u64, mut one: u64, mut p: u64, n: u64, npi: u64) -> u64 {
+    while p > 1 {
         if p & 1 == 0 {
             base = mont_prod(base, base, n, npi);
             p >>= 1;
@@ -178,55 +226,58 @@ fn mont_pow(mut base: u64, mut one: u64, mut p: u64, n: u64, npi: u64) -> u64 {
         }
     }
     mont_prod(one, base, n, npi)
-} 
+}
 
 // All modes call this function
-fn euler_p(p: u64, one: u64, npi: u64) -> bool {
-//    panic!("NOP E_P");
+const fn euler_p(p: u64, one: u64, npi: u64) -> bool {
     let res = p & 7;
-    let mut param = 0;
+    
+    let mut param : u32 = 0;
 
     if res == 1 {
         param = 1;
     }
-      // Montgomery form of 2
+    // Montgomery form of 2
     let mut result = one.wrapping_add(one);
-   
-    let d = (p - 1) >> (1 + param);
+    // p-1
+    let p_minus = p.wrapping_sub(1);
+    
+    let d = p_minus.wrapping_shr(param.wrapping_add(1));
 
-    result = mont_pow(result,one,d,p,npi);
+    result = mont_pow(result, one, d, p, npi);
 
-    result = to_normal_form(result,p,npi);//mont_prod(result, 1, p, npi);
- 
+    result = to_z(result, p, npi);
+
     if result == 1 {
         return res == 1 || res == 7;
-    } else if result == p - 1 {
+    } else if result == p_minus {
         return res == 1 || res == 3 || res == 5;
     }
     false
 }
 
-
-
-// Only the Default mode calls this function
+// Only the Default and SSMR modes call this function
 #[cfg(not(any(feature = "small", feature = "tiny")))]
-fn sprp(p: u64, base: u64, one: u64, npi: u64) -> bool {
-    let p_minus = p - 1;
+const fn sprp(p: u64, base: u64, one: u64, npi: u64) -> bool {
+
+    let p_minus = p.wrapping_sub(1);
     let twofactor = p_minus.trailing_zeros();
     let d = p_minus >> twofactor;
 
-    let mut result = base.wrapping_mul(one);
-    
-    let oneinv = mont_prod(mont_sub(p,one,p),one,p,npi);
-    
-    result = mont_pow(result,one,d,p,npi);
-    
-    
+    let mut result = (((base as u128) << 64) % (p as u128)) as u64;
+
+    let oneinv = mont_prod(mont_sub(p, one, p), one, p, npi);
+
+    result = mont_pow(result, one, d, p, npi);
+
     if result == one || result == oneinv {
         return true;
     }
 
-    for _ in 1..twofactor {
+    let mut count = 1;
+
+    while count < twofactor {
+        count += 1;
         result = mont_prod(result, result, p, npi);
 
         if result == oneinv {
@@ -236,41 +287,57 @@ fn sprp(p: u64, base: u64, one: u64, npi: u64) -> bool {
     false
 }
 
-fn core_primality(x: u64) -> bool{
+const fn core_primality(x: u64) -> bool {
+    let npi = mod_inv(x);
+    let one = (u64::MAX % x).wrapping_add(1);
 
-  let npi = mod_inv(x);
-  let one = (u64::MAX % x) + 1;
- 
- #[cfg(feature="ssmr")]
- {
-   if x < 1099720565341{
-    let idx = (x as u32).wrapping_mul(2202620065).wrapping_shr(19) as usize;
-    return sprp(x, FERMAT_BASE_40[idx] as u64, one,npi)
-   }
- }
-
-  if !euler_p(x,one,npi){
-     return false;
-  }
-  
-  #[cfg(not(any(feature = "small", feature = "tiny")))]
+    #[cfg(feature = "ssmr")]
     {
-        let idx = (x as u32).wrapping_mul(1276800789).wrapping_shr(14) as usize;
-         sprp(x, FERMAT_BASE[idx] as u64, one,npi)
+        // Ordering of fermat tests is swapped as apparently there is a notable cache penalty
+        // if you check the size of the integer first, so we just run the fermat test immediately
+        // This variant has nearly identical performance to the default, although the default in theory should be marginally faster
+        // In practice this is probably the better option
+        let idx = (x as u32).wrapping_mul(2559736147).wrapping_shr(14) as usize;
+        // Branch to a single shot primality test
+        if !sprp(x, FERMAT_BASE[idx] as u64, one, npi) {
+            return false;
+        }
+        // If greater than the first error -1
+        if x > 1u64<<40 {
+            return euler_p(x, one, npi);
+        }
+        return true;
+    }
+
+    #[cfg(not(any(feature = "small", feature = "tiny", feature = "ssmr")))]
+    {
+        if  !euler_p(x, one, npi) {
+            return false;
+        }
+        let idx = (x as u32).wrapping_mul(2559736147).wrapping_shr(14) as usize;
+        sprp(x, FERMAT_BASE[idx] as u64, one, npi)
     }
 
     #[cfg(any(feature = "small", feature = "tiny"))]
     {
-        lucas(x,npi)
-    }  
-    
+        if !euler_p(x, one, npi) {
+            return false;
+        }
+
+        if x < 1729 {
+            return true;
+        }
+
+        lucas(x, one, npi)
+    }
+  
 }
 
-
 /// Primality testing optimized for the average case in the interval 0;2^64.
+/// 
 /// Approximately 5 times faster than is_prime_wc in the average case, but slightly slower in the worst case.
 #[no_mangle]
-pub extern "C" fn is_prime(x: u64) -> bool {
+pub const extern "C" fn is_prime(x: u64) -> bool {
     if x == 1 {
         return false;
     }
@@ -294,99 +361,104 @@ pub extern "C" fn is_prime(x: u64) -> bool {
 
     #[cfg(not(feature = "tiny"))]
     {
-     const TRIAL_BOUND : u64 = 55730344633563600;
-     
-     if x < TRIAL_BOUND {
-     
-            for i in PRIME_INV_64.iter() {
-                let prod = x.wrapping_mul(*i);
+        if x < 55730344633563600 {
+            let mut idx: usize = 0;
+
+            while idx < 66 {
+                let prod = x.wrapping_mul(PRIME_INV_64[idx]);
                 if prod == 1 {
                     return true;
                 }
                 if prod < x {
                     return false;
                 }
+                idx += 1;
             }
-     }       
-    
-     if x >  TRIAL_BOUND {
-     
-      let interim = x%13082761331670030u64;
-        
-        for i in PRIME_INV_64[..13].iter(){
-           if interim.wrapping_mul(*i) < interim{
-             return false
-           }
-        }
-        
-        let interim = x%10575651537777253u64;
-        
-        for i in PRIME_INV_64[13..21].iter(){
-           if interim.wrapping_mul(*i) < interim{
-             return false
-           }
-        }
-        
-        let interim = x%9823972789433423u64;
-        
-        for i in PRIME_INV_64[21..29].iter(){
-           if interim.wrapping_mul(*i) < interim{
-             return false
-           }
-        }
-        
-        
-        let interim = x%805474958639317u64;
-        
-        for i in PRIME_INV_64[29..35].iter(){
-           if interim.wrapping_mul(*i) < interim{
-             return false
-           }
-        }
-       
-        let interim = x%4575249731290429u64;
-        
-        for i in PRIME_INV_64[35..42].iter(){
-           if interim.wrapping_mul(*i) < interim{
-             return false
-           }
-        }
-        
-       
-        let interim = x%18506541671175721u64;
-        
-        for i in PRIME_INV_64[42..49].iter(){
-           if interim.wrapping_mul(*i) < interim{
-             return false
-           }
-        }
-        
-        let interim = x%61247129307885343u64;
-        
-        for i in PRIME_INV_64[49..56].iter(){
-           if interim.wrapping_mul(*i) < interim{
-             return false
-           }
-        }
-        
-        
-        let interim = x%536967265590991u64;
-        
-        for i in PRIME_INV_64[56..62].iter(){
-           if interim.wrapping_mul(*i) < interim{
-             return false
-           }
-        }
-        
-        
-        let interim = x%1194404299990379u64;
-        
-        for i in PRIME_INV_64[62..].iter(){
-           if interim.wrapping_mul(*i) < interim{
-             return false
-           }
         }
 
+        if x > 55730344633563600 {
+            let interim = x % 13082761331670030u64;
+
+            let mut idx: usize = 0;
+
+            while idx < 13 {
+                if interim.wrapping_mul(PRIME_INV_64[idx]) < interim {
+                    return false;
+                }
+                idx += 1;
+            }
+
+            let interim = x % 10575651537777253u64;
+
+            while idx < 21 {
+                if interim.wrapping_mul(PRIME_INV_64[idx]) < interim {
+                    return false;
+                }
+                idx += 1
+            }
+
+            let interim = x % 9823972789433423u64;
+
+            while idx < 29 {
+                if interim.wrapping_mul(PRIME_INV_64[idx]) < interim {
+                    return false;
+                }
+                idx += 1;
+            }
+
+            let interim = x % 805474958639317u64;
+
+            while idx < 35 {
+                if interim.wrapping_mul(PRIME_INV_64[idx]) < interim {
+                    return false;
+                }
+                idx += 1;
+            }
+
+            let interim = x % 4575249731290429u64;
+
+            while idx < 42 {
+                if interim.wrapping_mul(PRIME_INV_64[idx]) < interim {
+                    return false;
+                }
+                idx += 1;
+            }
+
+            let interim = x % 18506541671175721u64;
+
+            while idx < 49 {
+                if interim.wrapping_mul(PRIME_INV_64[idx]) < interim {
+                    return false;
+                }
+                idx += 1;
+            }
+
+            let interim = x % 61247129307885343u64;
+
+            while idx < 56 {
+                if interim.wrapping_mul(PRIME_INV_64[idx]) < interim {
+                    return false;
+                }
+                idx += 1;
+            }
+
+            let interim = x % 536967265590991u64;
+
+            while idx < 62 {
+                if interim.wrapping_mul(PRIME_INV_64[idx]) < interim {
+                    return false;
+                }
+                idx += 1;
+            }
+
+            let interim = x % 3442087319857u64;
+
+            while idx < 66 {
+                if interim.wrapping_mul(PRIME_INV_64[idx]) < interim {
+                    return false;
+                }
+                idx += 1;
+            }
         } //end if
         
     } // end conditional block
@@ -394,26 +466,32 @@ pub extern "C" fn is_prime(x: u64) -> bool {
     core_primality(x)
 }
 
-/// Primality testing for the worst case. Panics at zero, flags 1 as prime, 2 as composite. Reduced memory variants 
-/// infinitely loop if the input is one of the perfect squares 1194649 or 12327121.This option is intended for proving 
-/// primality for integers that have already been checked using simpler methods.
-/// For example one could generate random integers without small factors and then prove that they are prime faster than with
-/// is_prime. Other applications include checking primality within a factorization function.
-/// Approximately 13% faster against primes than is_prime. 
+/// Primality testing for the worst case. 
+/// 
+/// Panics at zero, flags 1 as prime, 2 as composite.
+/// # SSMR
+/// Flags the perfect powers of 2 as well as 10,38,5368709120 and 7516192768 as prime
+/// # Small
+/// "Erroneously" returns true for the perfect squares 1194649 (1093^2) and 12327121 (3511^2). This is due to slightly faster parameter selection
+/// # Tiny
+/// Infinitely loops at the perfect squares 1194649 and 12327121.
 #[no_mangle]
-pub extern "C" fn is_prime_wc(x: u64) -> bool {
+pub const extern "C" fn is_prime_wc(x: u64) -> bool {
     /*
     Alerts for the failure points
     compiled library from Makefile does not have this check
     */
-     debug_assert!(x !=1 && x !=2 && x !=0);
-     
-     #[cfg(any(feature = "small", feature = "tiny"))]
-     {
-     debug_assert!(x != 1194649 && x != 12327121);
-     }
-  
-      core_primality(x)
+    debug_assert!(x != 1 && x != 2 && x != 0);
+    #[cfg(feature="ssmr")]
+    {
+      debug_assert!(!x.is_power_of_two());
+      debug_assert!(x != 10 && x != 38 && x != 5368709120 &&
+x != 7516192768);
+    }
+    #[cfg(any(feature = "small", feature = "tiny"))]
+    {
+        debug_assert!(x != 1194649 && x != 12327121);
+    }
+
+    core_primality(x)
 }
-
-

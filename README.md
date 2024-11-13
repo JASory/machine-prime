@@ -17,9 +17,9 @@ failure points may change.See source code or documentation for a list of these f
 Four modes are available for these functions, Default, SSMR and Small and Tiny. Memory use decreases but the complexity
 increases with each successive mode. 
 
-SSMR is the fastest for small values (n< 2^45) but may be slower than Default for larger values (n > 2^45). This is 
+SSMR is the fastest for small values (n< 2^40) but may be slower than Default for larger values (n > 2^40). This is 
 the recommended version to be used, since most applications are going to be smaller primes, and is_prime_wc is nearly
-twice as fast for (n < 2^45).    
+twice as fast for (n < 2^40).
 
 ## Usage
  Due to some barriers to compiling no-std libraries, the version in crates.io and the repository are slightly different,
