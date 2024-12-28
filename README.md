@@ -1,5 +1,5 @@
 Machine prime is a simple, efficient primality test for 64-bit integers, targeting research applications and casual use. 
-
+Enabling the "wide" feature allows primality testing for 128-bit integers.
 
 Two functions are provided with a C-style api to enable calling in other languages. Both can be called in const contexts.
 
@@ -11,38 +11,46 @@ the worst case and is intended to be used in functions that the number is alread
 absolutely minimal checks, and is permitted to have a handful of known failure points leaving it up to the user to
 decide if it is necessary to expend the cost to check for them.
 
-This function api will never change. is_prime will always correctly evaluate any 64-bit integer, however is_prime_wc
-failure points may change.See source code or documentation for a list of these failure points. 
-
-Four modes are available for these functions, Default, SSMR and Small and Tiny. Memory use decreases but the complexity
-increases with each successive mode. 
-
-SSMR is the fastest for small values (n< 2^40) but may be slower than Default for larger values (n > 2^40). This is 
-the recommended version to be used, since most applications are going to be smaller primes, and is_prime_wc is nearly
-twice as fast for (n < 2^40).
+This function api will never change. is_prime will always correctly evaluate any 64/128-bit integer, however is_prime_wc
+failure points may change.See source code or documentation for a list of these failure points.
 
 ## Usage
- Due to some barriers to compiling no-std libraries, the version in crates.io and the repository are slightly different,
- although using the exact same algorithms. crates.io version is configured for stable compilers, while the repository 
- is configured for nightly compiler, as the intention is to use it to build dynamic libraries. 
+ Machine-prime has 5 features, 3 of which are exclusive, and 2 of which can be combined with others
  
- To use from crates.io, simply include it in your cargo.toml file with the feature "ssmr","small" or "tiny" if you want those versions. 
+ - Lucas - Uses a lucas-v test and  adds trial division
+ - Table - Uses a hashtable 
+ - SSMR - branches for faster primality for n < 2^47 
+ - Wide - implements primality for 2^64;2^128
+ - Internal - Exposes internal algorithms and data, in Rust api (not C-api)
  
+ 
+ Machine-prime implements feature precedence going Lucas -> Table -> SSMR. In other words if the Table is implemented in one dependency
+ it will override another Machine-prime dependency using "Lucas" feature. Likewise SSMR will override both "Table" and "Lucas".
+ By default, Machine-prime implements the "Table" feature. Overriding this will implement a slower variant of the "Lucas" algorithm. It is
+ strongly recommended that you use one of the features, as this algorithm is very slow in the average case. 
+ 
+ Implementing "Wide" redefines the function to accept 128-bit, which branches to which algorithm the other features define for values below
+ 2^64, and uses a BPSW test for n > 2^64.
+ Implementing the "internal" feature exposes the internal arithmetic and data used. You cannot call these functions outside of Rust.  
+ 
+ ## Bindings
  To use as a dynamic library, make sure you are running rustc nightly; `git clone` this repository and run `make`
- to compile the Default mode, 'make ssmr' for the SSMR mode, `make small` for the Small mode and `make tiny` for
- the Tiny mode. This will create the library, and `make install` will install it to `/lib/libprime.so`. 
- (Make sure you are superuser). Installing the library is recommended but not strictly necessary. Link to it using 
+ to compile the default algorithm, `make lucas` for the "Lucas" mode, `make table` for the Table mode and `make ssmr` for
+ the SSMR mode. To extend to 128-bit add "wide" to the feature word, e.g `make tablewide`. Calling 128-bit FFI may result 
+ in errors. 
+ `make install` will install the created library to `/lib/libprime.so`.(Make sure you are superuser). 
+ Installing the library is recommended but not strictly necessary. Link to it using 
  ``-lprime`` if you are using gcc. 
 
 Alternately, if on Windows, use the provided batch file. 
 
 See the ["binding"](https://github.com/JASory/machine-prime/tree/main/binding) folder in the repository for 
-various language bindings. Several languages including the following are supported. 
+various language bindings. Several languages including the following are supported. 128-bit may not work on all architectures. 
 - Ada
-- C/C++
-- Fortran
+- C/C++ 
+- Fortran 
 - Haskell
-- Julia
+- Julia 
 - Python
 
 ## Applications
@@ -59,15 +67,16 @@ is_prime_wc is much more useful as it is faster against numbers that are already
   - Verifying Erastothenes sieves, and other primality tests; checking that prime_test(n) == is_prime_wc(n)
   - Verifying small primes used in prime certification, like the Pratt certificate
   - Searching for Fermat pseudoprimes; verifying that certain numbers that satisfy a^(n-1) mod n =1 are infact composite
-  
+ 
 ##  Notes
 See [Performance](https://github.com/JASory/machine-prime/blob/main/PERFORMANCE.md) for some benchmarks and 
 comparison to other efficient primality tests. 
 
-Approximate size of binary dynamic library varies with your compiler however the following are reasonable estimates:
-- Default/SSMR-542.4kb
-- Small-18.1kb
-- Tiny-14kb
+Approximate size of binary dynamic library varies with your compiler however the following are reasonable estimates after stripping:
+- SSMR-Wide - 540kb
+- Default/SSMR-533kb
+- Lucas-10kb
+- Tiny-7kb
 
 Building for embedded systems has not been tested, however there is no known cause for failure.
 
