@@ -492,7 +492,7 @@ pub const fn is_prime_wc_64(x: u64) -> bool {
     debug_assert!(x != 1 && x != 2 && x != 0);
     #[cfg(feature = "ssmr")]
     {
-        debug_assert!(x&1==0);
+        debug_assert!(x&1==1);
     }
     #[cfg(not(any(feature = "table", feature = "ssmr")))]
     {
