@@ -1,6 +1,7 @@
+/// Multiplicative inverse over Z/2^8
 #[rustfmt::skip]
-#[cfg(not(feature="tiny"))]
-pub(crate) const INV_8 : [u8; 128] = [
+#[cfg(any(feature="lucas",feature="table",feature="ssmr"))]
+pub const INV_8 : [u8; 128] = [
 
     0x01, 0xAB, 0xCD, 0xB7, 0x39, 0xA3, 0xC5, 0xEF, 0xF1, 0x1B, 0x3D, 0xA7, 0x29, 0x13, 0x35, 0xDF,
     0xE1, 0x8B, 0xAD, 0x97, 0x19, 0x83, 0xA5, 0xCF, 0xD1, 0xFB, 0x1D, 0x87, 0x09, 0xF3, 0x15, 0xBF,
@@ -13,9 +14,10 @@ pub(crate) const INV_8 : [u8; 128] = [
 
 ];
 
+/// Parameters that eliminate base-2 strong pseudoprimes
 #[rustfmt::skip]
-#[cfg(feature="small")]
-pub (crate) const LUCAS_PARAM : [u8;27] = [
+#[cfg(all(feature="lucas",not(any(feature="table",feature="ssmr"))))]
+pub const LUCAS_PARAM : [u8;27] = [
 
     0x06, 0x09, 0x0B, 0x0F, 0x11, 0x15, 0x2D, 0x51, 0x54,
     0x63, 0x69, 0x78, 0x81, 0x87, 0x99, 0xA4, 0xA5, 0xAF,
@@ -23,9 +25,10 @@ pub (crate) const LUCAS_PARAM : [u8;27] = [
 
 ];
 
+/// Multiplicative inverse of primes in the interval 3;331
 #[rustfmt::skip]
-#[cfg(not(feature="tiny"))]
-pub(crate) const PRIME_INV_64 : [u64;66] = [
+#[cfg(any(feature="lucas",feature="table",feature="ssmr"))]
+pub const PRIME_INV_64 : [u64;66] = [
 
  	   0xAAAAAAAAAAAAAAAB ,   0xCCCCCCCCCCCCCCCD ,   0x6DB6DB6DB6DB6DB7 ,   0x2E8BA2E8BA2E8BA3 ,
 	   0x4EC4EC4EC4EC4EC5 ,   0xF0F0F0F0F0F0F0F1 ,   0x86BCA1AF286BCA1B ,   0xD37A6F4DE9BD37A7 ,
