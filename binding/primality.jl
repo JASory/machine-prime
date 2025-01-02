@@ -5,12 +5,23 @@
 
 function is_prime(x::Unsigned)
    y = UInt64(x);
-   return ccall( (:is_prime, "libprime"), Bool, (UInt64,), y)
+   return ccall( (:is_prime_128, "libprime"), Bool, (UInt128,), y)
 end    
  
 function is_prime_wc(x::Unsigned)
    y = UInt64(x);
-   return ccall( (:is_prime_wc, "libprime"), Bool, (UInt64,), y)
+   return ccall( (:is_prime_wc_128, "libprime"), Bool, (UInt128,), y)
 end    
+
+#function is_prime(x::Unsigned)
+#   y = UInt128(x);
+#   return ccall( (:is_prime_128, "libprime"), Bool, (UInt128,), y)
+#end    
+ 
+#function is_prime_wc(x::Unsigned)
+#   y = UInt128(x);
+#   return ccall( (:is_prime_wc_128, "libprime"), Bool, (UInt128,), y)
+#end    
+
 
 

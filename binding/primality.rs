@@ -6,6 +6,11 @@ extern {
    fn is_prime(x: u64) -> bool;
    
    fn is_prime_wc(x: u64) -> bool;
+   /* 
+   fn is_prime_128(x: u128) -> bool;
+   
+   fn is_prime_wc_128(x: u128) -> bool;
+   */
 }
 
 /*

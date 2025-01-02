@@ -11,9 +11,14 @@ extern "C" {
 #endif
 
  bool is_prime(uint64_t x);
- 
- bool is_prime_wc(uint64_t x);
 
+ bool is_prime_wc(uint64_t x);
+ 
+/* 
+ bool is_prime_128(__int128 x);
+ 
+ bool is_prime_wc_128(__int128 x);
+*/
 #ifdef __cplusplus
 }  
 #endif

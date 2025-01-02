@@ -22,7 +22,7 @@ implementation of a primality test (excepting identical implementations of machi
 at minimum 3x faster than Forisek and Jancina's native C implementation (FJ262K). Even python's abysmal performance is sufficient to outspeed the 
 FJ262K algorithm. 
 
-Machine-prime has 3 modes Default, Small, and Tiny. Default is the fastest, and Tiny is the slowest. All of the bindings are benchmarked using the Default mode dynamic library on Linux. Two benchmarks are used: is_prime against the largest 100 million integers, and is_prime_wc against 2^64-59 the hardest case, 10 million times. Additionally we compare against Forisek & Jancina's implementation which was the prior fastest implementation. 
+Machine-prime has 4 modes Default,Lucas,Table, SSMR. Default is the fastest, and Tiny is the slowest. All of the bindings are benchmarked using the Table mode dynamic library on Linux. Two benchmarks are used: is_prime against the largest 100 million integers, and is_prime_wc against 2^64-59 the hardest case, 10 million times. Additionally we compare against Forisek & Jancina's implementation which was the prior fastest implementation. 
 The benchmarks here are taken on an Intel i5-5300U (4) @ 2.900GHz
 
 - Native Rust Default: Average 6s Worst 7.5s
