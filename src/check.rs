@@ -354,8 +354,10 @@ const fn core_primality(x: u64) -> bool {
     }
 }
 
-/// Internal 64-bit is_prime
-pub const fn is_prime_64(x: u64) -> bool {
+/// Primality testing optimized for the average case in the interval 0;2^64.
+///
+/// Approximately 5 times faster than is_prime_wc in the average case, but slightly slower in the worst case.
+pub const extern "C" fn is_prime(x: u64) -> bool {
     if x == 1 {
         return false;
     }
@@ -483,8 +485,19 @@ pub const fn is_prime_64(x: u64) -> bool {
     core_primality(x)
 }
 
-/// Internal 64-bit is_prime_64
-pub const fn is_prime_wc_64(x: u64) -> bool {
+/// Primality testing for the worst case.
+///
+/// Panics at zero, flags 1 as prime, 2 as composite.
+/// # SSMR
+/// May pass some even numbers as prime
+/// # Lucas
+/// "Erroneously" returns true for the perfect squares 1194649 (1093^2) and 12327121 (3511^2). This is due to slightly faster parameter selection
+/// # Tiny
+/// Infinitely loops at the perfect squares 1194649 and 12327121.
+/// # Wide
+/// No additional known errors
+#[no_mangle]
+pub const extern "C" fn is_prime_wc(x: u64) -> bool {
     /*
     Alerts for the failure points
     compiled library from Makefile does not have this check
@@ -500,62 +513,4 @@ pub const fn is_prime_wc_64(x: u64) -> bool {
     }
 
     core_primality(x)
-}
-
-/// Primality testing for the worst case.
-///
-/// Panics at zero, flags 1 as prime, 2 as composite.
-/// # SSMR
-/// May pass some even numbers as prime
-/// # Lucas
-/// "Erroneously" returns true for the perfect squares 1194649 (1093^2) and 12327121 (3511^2). This is due to slightly faster parameter selection
-/// # Tiny
-/// Infinitely loops at the perfect squares 1194649 and 12327121.
-/// # Wide
-/// No additional known errors
-#[cfg(feature = "wide")]
-#[no_mangle]
-pub const extern "C" fn is_prime_wc(x: u128) -> bool {
-    if x < 0x10000000000000000 {
-        return is_prime_wc_64(x as u64);
-    }
-    is_prime_wc_128(x)
-}
-
-/// Primality testing for the worst case.
-///
-/// Panics at zero, flags 1 as prime, 2 as composite.
-/// # SSMR
-/// May pass some even numbers as prime
-/// # Lucas
-/// "Erroneously" returns true for the perfect squares 1194649 (1093^2) and 12327121 (3511^2). This is due to slightly faster parameter selection
-/// # Tiny
-/// Infinitely loops at the perfect squares 1194649 and 12327121.
-/// # Wide
-/// No additional known errors
-#[cfg(not(feature = "wide"))]
-#[no_mangle]
-pub const extern "C" fn is_prime_wc(x: u64) -> bool {
-    is_prime_wc_64(x)
-}
-
-/// Primality testing optimized for the average case in the interval 0;2^128.
-///
-/// Approximately 5 times faster than is_prime_wc in the average case, but slightly slower in the worst case.
-#[cfg(feature = "wide")]
-#[no_mangle]
-pub const extern "C" fn is_prime(x: u128) -> bool {
-    if x < 0x10000000000000000 {
-        return is_prime_64(x as u64);
-    }
-    is_prime_128(x)
-}
-
-/// Primality testing optimized for the average case in the interval 0;2^64.
-///
-/// Approximately 5 times faster than is_prime_wc in the average case, but slightly slower in the worst case.
-#[cfg(not(feature = "wide"))]
-#[no_mangle]
-pub const extern "C" fn is_prime(x: u64) -> bool {
-    is_prime_64(x)
 }

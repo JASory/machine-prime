@@ -59,7 +59,16 @@
 //! - Division by first 67 primes
 //! - Base-2 strong test
 //! - Lucas sequence test
-//! Branches to whatever algorithm is selected by other features for n < 2^64 
+//! 
+//! Properties
+//! - is_prime_128 complexity: 3.4*t
+//! - is_prime_wc_128 complexity: 3.4*t
+//! Complexity here is measured against 64-bit. Currently 128-bit runs in approximately 3.4t where t is 64-bit run-time
+//! using the "Table" algorithm. 
+//! Branches to whatever algorithm is selected by other features for n < 2^64. 
+//! 
+//! This current implementation uses a modified BPSW test which has no known counterexamples. If one wants to strength it, 
+//! one can use the strong_fermat test exposed by the "internal" feature, to add more tests at some extra cost.  
 
 /* Comment out for crates publication
 */
@@ -77,7 +86,8 @@ pub(crate) mod primes;
 pub(crate) mod double;
 
 pub use check::{is_prime,is_prime_wc};
-
+#[cfg(feature="wide")]
+pub use double::{is_prime_128,is_prime_wc_128};
 
 #[cfg(feature="internal")]
 pub use check::*;

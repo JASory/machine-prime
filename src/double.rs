@@ -74,7 +74,7 @@ pub const fn nqr_128(a: u128, k: u128) -> bool {
 ///
 ///  In: N
 ///
-/// Out: x := jacobi(x*x-4,N) == -1
+/// Out: x := jacobi(x^2-4,N) == -1
 pub const fn param_search_128(n: u128) -> u128 {
     let rem = n % 5;
 
@@ -106,8 +106,12 @@ pub const fn param_search_128(n: u128) -> u128 {
     p
 }
 
-
-const fn u256prod(lhs: u128, rhs: u128) -> (u128, u128) {
+/// Product of two 128-bit integers
+///
+/// In: X,Y
+/// 
+/// Out: XY mod 2^128, XY/2^128
+pub const fn u256prod(lhs: u128, rhs: u128) -> (u128, u128) {
     // hi,low
     let ((x1, x0), (y1, y0)) = (split_to_u128(lhs), split_to_u128(rhs));
 
@@ -117,10 +121,15 @@ const fn u256prod(lhs: u128, rhs: u128) -> (u128, u128) {
     let z2 = z2 + c1;
     let (c1, z1) = split_to_u128(x0 * y1 + z1);
 
-    (z2 + c1, z0 | z1 << 64) // hi,lo returned
+    (z2 + c1, z0 | z1 << 64) // lo,hi returned
 }
 
-const fn u256prod_lo(lhs: u128, rhs: u128) -> u128 {
+/// Lower product of two 128-bit integers
+///
+/// In: X,Y
+/// 
+/// Out: X*Y mod 2^128
+pub const fn u256prod_lo(lhs: u128, rhs: u128) -> u128 {
     let ((x0, x1), (y0, y1)) = (split_to_u128(lhs), split_to_u128(rhs));
 
     let z2 = x0 * y0;
@@ -131,7 +140,12 @@ const fn u256prod_lo(lhs: u128, rhs: u128) -> u128 {
     z2 + c1
 }
 
-const fn u256sqr(x: u128) -> (u128, u128) {
+/// Square of a 128-bit integer
+///
+/// In: X 
+///
+/// Out:  X^2 mod 2^128, X^2 / 2^128
+pub const fn u256sqr(x: u128) -> (u128, u128) {
     // hi,low
     let (x1, x0) = split_to_u128(x);
 
@@ -141,7 +155,7 @@ const fn u256sqr(x: u128) -> (u128, u128) {
     let (c1, z1) = split_to_u128(m + c0);
     let z2 = z2 + c1;
     let (c1, z1) = split_to_u128(m + z1);
-    (z2 + c1, z0 | z1 << 64)
+    (z2 + c1, z0 | z1 << 64) // lo,hi 
 }
 
 /// One in Montgomery form, 128-bit form
@@ -241,7 +255,7 @@ pub const fn to_mont_128(x: u128, n: u128) -> u128 {
 ///
 /// In: Mont(X,N),Mont(Y,N), N, N^-1
 ///
-/// Out: Mont(X*Y,N)
+/// Out: Mont(XY,N)
 pub const fn mont_prod_128(x: u128, y: u128, n: u128, npi: u128) -> u128 {
     let (hi, lo) = u256prod(x, y);
     let lo = lo.wrapping_mul(npi);
@@ -259,7 +273,7 @@ pub const fn mont_prod_128(x: u128, y: u128, n: u128, npi: u128) -> u128 {
 ///
 /// In: Mont(X,N), N, N^-1
 ///
-/// Out: Mont(X*X,N)
+/// Out: Mont(X^2,N)
 pub const fn mont_sqr_128(x: u128, n: u128, npi: u128) -> u128 {
     let (hi, lo) = u256sqr(x);
     let lo = lo.wrapping_mul(npi);
@@ -277,7 +291,7 @@ pub const fn mont_sqr_128(x: u128, n: u128, npi: u128) -> u128 {
 ///  In: Mont(base),Mont(1),pow,n, inv
 ///
 /// Out: base^pow mod n
-const fn mont_pow_128(mut base: u128, mut one: u128, mut p: u128, n: u128, npi: u128) -> u128 {
+pub const fn mont_pow_128(mut base: u128, mut one: u128, mut p: u128, n: u128, npi: u128) -> u128 {
     while p > 1 {
         if p & 1 == 0 {
             base = mont_sqr_128(base, n, npi);
@@ -395,13 +409,22 @@ const fn core_primality_128(x: u128) -> bool {
     lucas_128(x, one, two, inv)
 }
 
-/// Internal 128-bit is_prime_wc
-pub const fn is_prime_wc_128(x: u128) -> bool {
+/// 128-bit is_prime_wc
+///
+/// Branches to use is_prime_wc for n < 2^64
+/// No additional known errors
+pub const extern "C" fn is_prime_wc_128(x: u128) -> bool {
+    if x < 1u128<<64{
+       return crate::check::is_prime_wc(x as u64);
+    }
     core_primality_128(x)
 }
 
-/// Internal 128-bit is_prime
-pub const fn is_prime_128(x: u128) -> bool {
+/// 128-bit is_prime
+pub const extern "C" fn is_prime_128(x: u128) -> bool {
+    if x < 1u128<<64{
+       return crate::check::is_prime(x as u64);
+    }
     if x & 1 == 0 {
         return false;
     }
