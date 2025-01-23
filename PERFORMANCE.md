@@ -1,6 +1,6 @@
 Performance 
 
-Machine-prime is compared to some of the other fastest primality tests for 64-bit integers. 
+Machine-prime is compared to some of the other fastest primality tests for 64-bit integers. (Note: This is out-of-date, v 1.5.2 runs in approximately 0.9t)
 
 The benchmarking is performed by starting from the 2^n and counting down 100 million integers. The values tested are from 2^31 to 2^64. By iterating sequentially one avoids overhead and variability in generating random numbers, and one can expect the multiples of primes (composites) to be roughly evenly distributed or sufficiently that it would not skew the results by the degree of difference that we observe. 
 
