@@ -31,7 +31,7 @@ pub const fn mul_inv2_128(n: u128) -> u128 {
 
 #[inline(always)]
 const fn split_to_u128(x: u128) -> (u128, u128) {
-    (x >> 64, x & 0xFFFFFFFFFFFFFFFF)
+    (x.wrapping_shr(64), x & 0xFFFFFFFFFFFFFFFF)
 }
 
 /// Check if non-quadratic residue, 128-bit form
@@ -101,7 +101,7 @@ pub const fn param_search_128(n: u128) -> u128 {
         if nqr_128(d, n) {
             break;
         }
-        p += 1;
+        p = p.wrapping_sub(1);
     }
     p
 }
@@ -115,13 +115,13 @@ pub const fn u256prod(lhs: u128, rhs: u128) -> (u128, u128) {
     // hi,low
     let ((x1, x0), (y1, y0)) = (split_to_u128(lhs), split_to_u128(rhs));
 
-    let z2 = x1 * y1;
-    let (c0, z0) = split_to_u128(x0 * y0);
-    let (c1, z1) = split_to_u128(x1 * y0 + c0);
-    let z2 = z2 + c1;
-    let (c1, z1) = split_to_u128(x0 * y1 + z1);
+    let z2 = x1.wrapping_mul(y1);
+    let (c0, z0) = split_to_u128(x0.wrapping_mul(y0));
+    let (c1, z1) = split_to_u128(x1.wrapping_mul(y0).wrapping_add(c0));
+    let z2 = z2.wrapping_add(c1);
+    let (c1, z1) = split_to_u128(x0.wrapping_mul(y1).wrapping_add(z1));
 
-    (z2 + c1, z0 | z1 << 64) // lo,hi returned
+    (z2.wrapping_add(c1), z0 | z1.wrapping_shl(64)) // lo,hi returned
 }
 
 /// Lower product of two 128-bit integers
@@ -132,12 +132,12 @@ pub const fn u256prod(lhs: u128, rhs: u128) -> (u128, u128) {
 pub const fn u256prod_lo(lhs: u128, rhs: u128) -> u128 {
     let ((x0, x1), (y0, y1)) = (split_to_u128(lhs), split_to_u128(rhs));
 
-    let z2 = x0 * y0;
-    let c0 = x1.wrapping_mul(y1) >> 64;
-    let (c1, z1) = split_to_u128(x0 * y1 + c0);
-    let z2 = z2 + c1;
-    let c1 = (x1 * y0).wrapping_add(z1) >> 64;
-    z2 + c1
+    let z2 = x0.wrapping_mul(y0);
+    let c0 = x1.wrapping_mul(y1).wrapping_shr(64);
+    let (c1, z1) = split_to_u128(x0.wrapping_mul(y1).wrapping_add(c0));
+    let z2 = z2.wrapping_add(c1);
+    let c1 = x1.wrapping_mul(y0).wrapping_add(z1).wrapping_shr(64);
+    z2.wrapping_add(c1)
 }
 
 /// Square of a 128-bit integer
@@ -149,13 +149,13 @@ pub const fn u256sqr(x: u128) -> (u128, u128) {
     // hi,low
     let (x1, x0) = split_to_u128(x);
 
-    let z2 = x1 * x1;
-    let m = x1 * x0;
-    let (c0, z0) = split_to_u128(x0 * x0);
-    let (c1, z1) = split_to_u128(m + c0);
-    let z2 = z2 + c1;
-    let (c1, z1) = split_to_u128(m + z1);
-    (z2 + c1, z0 | z1 << 64) // lo,hi 
+    let z2 = x1.wrapping_mul(x1);
+    let m = x1.wrapping_mul(x0);
+    let (c0, z0) = split_to_u128(x0.wrapping_mul(x0));
+    let (c1, z1) = split_to_u128(m.wrapping_add(c0));
+    let z2 = z2.wrapping_add(c1);
+    let (c1, z1) = split_to_u128(m.wrapping_add(z1));
+    (z2.wrapping_add(c1), z0 | z1.wrapping_shl(64)) // lo,hi 
 }
 
 /// One in Montgomery form, 128-bit form
@@ -206,22 +206,22 @@ pub const fn to_mont_128(x: u128, n: u128) -> u128 {
 
     let s = divisor.leading_zeros();
     // Scale the values
-    dividend <<= s;
-    divisor <<= s;
+    dividend = dividend.wrapping_shl(s);
+    divisor = divisor.wrapping_shl(s);
 
     let (d1, d0) = split_to_u128(divisor);
 
     let (mut q1, mut rhat) = (dividend / d1, dividend % d1);
 
-    let mut prod = q1 * d0;
-    let addend = RADIX * d1;
-    let mut prod2 = RADIX * rhat;
+    let mut prod = q1.wrapping_mul(d0);
+    let addend = RADIX.wrapping_mul(d1);
+    let mut prod2 = RADIX.wrapping_mul(rhat);
 
     while q1 >= RADIX || prod > prod2 {
-        q1 -= 1;
-        prod -= d0;
-        rhat += d1;
-        prod2 += addend;
+        q1 = q1.wrapping_sub(1);
+        prod = prod.wrapping_sub(d0);
+        rhat = rhat.wrapping_add(d1);
+        prod2 = prod2.wrapping_add(addend);
         if rhat >= RADIX {
             break;
         }
@@ -233,12 +233,12 @@ pub const fn to_mont_128(x: u128, n: u128) -> u128 {
 
     let (mut q0, mut rhat) = (r21 / d1, r21 % d1);
 
-    let mut prod = q0 * d0;
+    let mut prod = q0.wrapping_mul(d0);
 
-    while q0 >= RADIX || prod > RADIX * rhat {
-        q0 -= 1;
-        rhat += d1;
-        prod -= d0;
+    while q0 >= RADIX || prod > RADIX.wrapping_mul(rhat) {
+        q0 = q0.wrapping_sub(1);
+        rhat = rhat.wrapping_add(d1);
+        prod = prod.wrapping_sub(d0);
         if rhat >= RADIX {
             break;
         }
@@ -247,7 +247,7 @@ pub const fn to_mont_128(x: u128, n: u128) -> u128 {
     let r = (r21
         .wrapping_mul(RADIX)
         .wrapping_sub(q0.wrapping_mul(divisor)))
-        >> s;
+        .wrapping_shr(s);
     r
 }
 
@@ -295,11 +295,11 @@ pub const fn mont_pow_128(mut base: u128, mut one: u128, mut p: u128, n: u128, n
     while p > 1 {
         if p & 1 == 0 {
             base = mont_sqr_128(base, n, npi);
-            p >>= 1;
+            p = p.wrapping_shr(1);
         } else {
             one = mont_prod_128(base, one, n, npi);
             base = mont_sqr_128(base, n, npi);
-            p = (p - 1) >> 1
+            p = p.wrapping_sub(1).wrapping_shr(1)
         }
     }
     mont_prod_128(base, one, n, npi)
@@ -331,14 +331,14 @@ pub const fn lucas_128(n: u128, one: u128, two: u128, npi: u128) -> bool {
     while i < (b.wrapping_add(1)) {
         let t = mont_sub_128(mont_prod_128(v, w, n, npi), m_param, n);
 
-        if (d >> (b - i)) & 1 == 1 {
+        if d.wrapping_shr(b.wrapping_sub(i)) & 1 == 1 {
             v = t;
             w = mont_sub_128(mont_sqr_128(w, n, npi), two, n);
         } else {
             w = t;
             v = mont_sub_128(mont_sqr_128(v, n, npi), two, n);
         }
-        i += 1;
+        i = i.wrapping_add(1);
     }
 
     if v == two || v == m_2_inv {
@@ -355,7 +355,7 @@ pub const fn lucas_128(n: u128, one: u128, two: u128, npi: u128) -> bool {
         if v == two {
             return false;
         }
-        counter += 1;
+        counter = counter.wrapping_add(1);
     }
     false
 }
@@ -373,7 +373,7 @@ pub const fn strong_fermat_128(
     oneinv: u128,
     inv: u128,
 ) -> bool {
-    let d = p.wrapping_sub(1) >> tz;
+    let d = p.wrapping_sub(1).wrapping_shr(tz);
 
     let mut result = mont_pow_128(base, one, d, p, inv);
 
@@ -384,7 +384,7 @@ pub const fn strong_fermat_128(
     let mut count = 1;
 
     while count < tz {
-        count += 1;
+        count = count.wrapping_add(1);
         result = mont_sqr_128(result, p, inv);
 
         if result == oneinv {
@@ -393,6 +393,7 @@ pub const fn strong_fermat_128(
     }
     false
 }
+
 
 const fn core_primality_128(x: u128) -> bool {
     let inv = mul_inv2_128(x);
@@ -405,7 +406,13 @@ const fn core_primality_128(x: u128) -> bool {
     if !strong_fermat_128(x, tzc, two, one, oneinv, inv) {
         return false;
     }
-
+    /* 
+     Inconsequential optimisation
+    if x < 0x10002400000000000{
+       let base = to_mont_128(552491497,x);
+         return strong_fermat_128(x, tzc, base, one, oneinv, inv);
+    }
+    */
     lucas_128(x, one, two, inv)
 }
 
@@ -413,16 +420,18 @@ const fn core_primality_128(x: u128) -> bool {
 ///
 /// Branches to use is_prime_wc for n < 2^64
 /// No additional known errors
+#[no_mangle]
 pub const extern "C" fn is_prime_wc_128(x: u128) -> bool {
-    if x < 1u128<<64{
+    if x < 0x10000000000000000{
        return crate::check::is_prime_wc(x as u64);
     }
     core_primality_128(x)
 }
 
 /// 128-bit is_prime
+#[no_mangle]
 pub const extern "C" fn is_prime_128(x: u128) -> bool {
-    if x < 1u128<<64{
+    if x < 0x10000000000000000{
        return crate::check::is_prime(x as u64);
     }
     if x & 1 == 0 {
@@ -439,7 +448,7 @@ pub const extern "C" fn is_prime_128(x: u128) -> bool {
             if residue.wrapping_mul(PRIME_INV_64[idx]) < residue {
                 return false;
             }
-            idx += 1;
+            idx = idx.wrapping_add(1);
         }
 
         let residue = (x % 10575651537777253u128) as u64;
@@ -448,7 +457,7 @@ pub const extern "C" fn is_prime_128(x: u128) -> bool {
             if residue.wrapping_mul(PRIME_INV_64[idx]) < residue {
                 return false;
             }
-            idx += 1
+            idx = idx.wrapping_add(1)
         }
 
         let residue = (x % 9823972789433423u128) as u64;
@@ -457,7 +466,7 @@ pub const extern "C" fn is_prime_128(x: u128) -> bool {
             if residue.wrapping_mul(PRIME_INV_64[idx]) < residue {
                 return false;
             }
-            idx += 1;
+            idx = idx.wrapping_add(1);
         }
 
         let residue = (x % 805474958639317u128) as u64;
@@ -466,7 +475,7 @@ pub const extern "C" fn is_prime_128(x: u128) -> bool {
             if residue.wrapping_mul(PRIME_INV_64[idx]) < residue {
                 return false;
             }
-            idx += 1;
+            idx = idx.wrapping_add(1);
         }
 
         let residue = (x % 4575249731290429u128) as u64;
@@ -475,7 +484,7 @@ pub const extern "C" fn is_prime_128(x: u128) -> bool {
             if residue.wrapping_mul(PRIME_INV_64[idx]) < residue {
                 return false;
             }
-            idx += 1;
+            idx = idx.wrapping_add(1);
         }
 
         let residue = (x % 18506541671175721u128) as u64;
@@ -484,7 +493,7 @@ pub const extern "C" fn is_prime_128(x: u128) -> bool {
             if residue.wrapping_mul(PRIME_INV_64[idx]) < residue {
                 return false;
             }
-            idx += 1;
+            idx = idx.wrapping_add(1);
         }
 
         let residue = (x % 61247129307885343u128) as u64;
@@ -493,7 +502,7 @@ pub const extern "C" fn is_prime_128(x: u128) -> bool {
             if residue.wrapping_mul(PRIME_INV_64[idx]) < residue {
                 return false;
             }
-            idx += 1;
+            idx = idx.wrapping_add(1);
         }
 
         let residue = (x % 536967265590991u128) as u64;
@@ -502,7 +511,7 @@ pub const extern "C" fn is_prime_128(x: u128) -> bool {
             if residue.wrapping_mul(PRIME_INV_64[idx]) < residue {
                 return false;
             }
-            idx += 1;
+            idx = idx.wrapping_add(1);
         }
 
         let residue = (x % 3442087319857u128) as u64;
@@ -511,7 +520,7 @@ pub const extern "C" fn is_prime_128(x: u128) -> bool {
             if residue.wrapping_mul(PRIME_INV_64[idx]) < residue {
                 return false;
             }
-            idx += 1;
+            idx = idx.wrapping_add(1);
         }
     } // end conditional block
     core_primality_128(x)

@@ -28,7 +28,7 @@ pub const fn mul_inv2(n: u64) -> u64 {
 
     #[cfg(any(feature = "lucas", feature = "table", feature = "ssmr"))]
     {
-        let mut est: u64 = INV_8[((n >> 1) & 0x7F) as usize] as u64;
+        let mut est: u64 = INV_8[(n.wrapping_shr(1) & 0x7F) as usize] as u64;
         est = 2u64.wrapping_sub(est.wrapping_mul(n)).wrapping_mul(est);
         est = 2u64.wrapping_sub(est.wrapping_mul(n)).wrapping_mul(est);
         est = 2u64.wrapping_sub(est.wrapping_mul(n)).wrapping_mul(est);
@@ -41,12 +41,11 @@ pub const fn mul_inv2(n: u64) -> u64 {
 /// In: Mont(X,N),Mont(Y,N), N, N^-1
 ///
 /// Out: Mont(X*Y,N)
-
 pub const fn mont_prod(x: u64, y: u64, n: u64, inv: u64) -> u64 {
     let full_prod: u128 = (x as u128).wrapping_mul(y as u128);
     let lo: u64 = (full_prod as u64).wrapping_mul(inv);
-    let lo: u64 = ((lo as u128).wrapping_mul(n as u128) >> 64) as u64;
-    let hi: u64 = (full_prod >> 64) as u64;
+    let lo: u64 = (lo as u128).wrapping_mul(n as u128).wrapping_shr(64) as u64;
+    let hi: u64 = full_prod.wrapping_shr(64) as u64;
 
     if hi < lo {
         hi.wrapping_sub(lo).wrapping_add(n)
@@ -62,7 +61,7 @@ pub const fn mont_prod(x: u64, y: u64, n: u64, inv: u64) -> u64 {
 /// Out: Mont(X,N)
 #[inline]
 pub const fn to_mont(x: u64, n: u64) -> u64 {
-    (((x as u128) << 64) % (n as u128)) as u64
+   ((x as u128).wrapping_shl(64) % (n as u128)) as u64
 }
 
 /// One in Montgomery form
@@ -113,7 +112,7 @@ pub const fn nqr(a: u64, k: u64) -> bool {
 
     while n != 0 {
         let zeros = n.trailing_zeros();
-        n >>= zeros;
+        n = n.wrapping_shr(zeros);
 
         if (p & 7 == 3 || p & 7 == 5) && (zeros & 1 == 1) {
             t ^= true;
@@ -171,7 +170,7 @@ pub const fn param_search(n: u64) -> u64 {
             if nqr(i.wrapping_mul(i).wrapping_sub(4u64), n) {
                 return i;
             }
-            idx += 1;
+            idx = idx.wrapping_add(1);
         }
         0u64
     }
@@ -185,7 +184,7 @@ pub const fn param_search(n: u64) -> u64 {
             if nqr(d, n) {
                 break;
             }
-            p += 1;
+            p = p.wrapping_add(1);
         }
         p
     }
@@ -222,17 +221,17 @@ pub const fn lucas(n: u64, one: u64, two: u64, npi: u64) -> bool {
 
     let mut i = 2;
 
-    while i < (b.wrapping_add(1)) {
+    while i < b.wrapping_add(1) {
         let t = mont_sub(mont_prod(v, w, n, npi), m_param, n);
 
-        if (d >> (b - i)) & 1 == 1 {
+        if d.wrapping_shr(b.wrapping_sub(i)) & 1 == 1 {
             v = t;
             w = mont_sub(mont_prod(w, w, n, npi), two, n);
         } else {
             w = t;
             v = mont_sub(mont_prod(v, v, n, npi), two, n);
         }
-        i += 1;
+        i = i.wrapping_add(1);
     }
 
     if v == two || v == m_2_inv {
@@ -249,7 +248,7 @@ pub const fn lucas(n: u64, one: u64, two: u64, npi: u64) -> bool {
         if v == two {
             return false;
         }
-        counter += 1;
+        counter = counter.wrapping_add(1);
     }
     false
 }
@@ -263,11 +262,11 @@ pub const fn mont_pow(mut base: u64, mut one: u64, mut pow: u64, n: u64, npi: u6
     while pow > 1 {
         if pow & 1 == 0 {
             base = mont_prod(base, base, n, npi);
-            pow >>= 1;
+            pow = pow.wrapping_shr(1);
         } else {
             one = mont_prod(one, base, n, npi);
             base = mont_prod(base, base, n, npi);
-            pow = (pow - 1) >> 1;
+            pow = pow.wrapping_sub(1).wrapping_shr(1);
         }
     }
     mont_prod(one, base, n, npi)
@@ -286,7 +285,7 @@ pub const fn base_selector(x: u64) -> u64 {
 ///
 /// Out: SPRP(N,base)
 pub const fn strong_fermat(n: u64, tz: u32, base: u64, one: u64, oneinv: u64, inv: u64) -> bool {
-    let d = n.wrapping_sub(1) >> tz;
+    let d = n.wrapping_sub(1).wrapping_shr(tz);
 
     let mut result = mont_pow(base, one, d, n, inv);
 
@@ -297,7 +296,7 @@ pub const fn strong_fermat(n: u64, tz: u32, base: u64, one: u64, oneinv: u64, in
     let mut count = 1;
 
     while count < tz {
-        count += 1;
+        count = count.wrapping_add(1);
         result = mont_prod(result, result, n, inv);
 
         if result == oneinv {
@@ -321,7 +320,7 @@ const fn core_primality(x: u64) -> bool {
             return false;
         }
 
-        if x > 1u64 << 47 {
+        if x > 0x800000000000{
             let two = two_mont(one, x);
             return strong_fermat(x, tzc, two, one, oneinv, inv);
         }
@@ -336,7 +335,7 @@ const fn core_primality(x: u64) -> bool {
         }
 
         let base = base_selector(x);
-        strong_fermat(x, tzc, to_mont(base, x), one, oneinv, inv)
+        strong_fermat(x, tzc,to_mont(base, x), one, oneinv, inv)
     }
 
     #[cfg(not(any(feature = "table", feature = "ssmr")))]
@@ -357,6 +356,7 @@ const fn core_primality(x: u64) -> bool {
 /// Primality testing optimized for the average case in the interval 0;2^64.
 ///
 /// Approximately 5 times faster than is_prime_wc in the average case, but slightly slower in the worst case.
+#[no_mangle]
 pub const extern "C" fn is_prime(x: u64) -> bool {
     if x == 1 {
         return false;
@@ -392,7 +392,7 @@ pub const extern "C" fn is_prime(x: u64) -> bool {
                 if prod < x {
                     return false;
                 }
-                idx += 1;
+                idx = idx.wrapping_add(1);
             }
         }
 
@@ -405,7 +405,7 @@ pub const extern "C" fn is_prime(x: u64) -> bool {
                 if residue.wrapping_mul(PRIME_INV_64[idx]) < residue {
                     return false;
                 }
-                idx += 1;
+                idx = idx.wrapping_add(1);
             }
 
             let residue = x % 10575651537777253u64;
@@ -414,7 +414,7 @@ pub const extern "C" fn is_prime(x: u64) -> bool {
                 if residue.wrapping_mul(PRIME_INV_64[idx]) < residue {
                     return false;
                 }
-                idx += 1
+                idx = idx.wrapping_add(1)
             }
 
             let residue = x % 9823972789433423u64;
@@ -423,7 +423,7 @@ pub const extern "C" fn is_prime(x: u64) -> bool {
                 if residue.wrapping_mul(PRIME_INV_64[idx]) < residue {
                     return false;
                 }
-                idx += 1;
+                idx = idx.wrapping_add(1);
             }
 
             let residue = x % 805474958639317u64;
@@ -432,7 +432,7 @@ pub const extern "C" fn is_prime(x: u64) -> bool {
                 if residue.wrapping_mul(PRIME_INV_64[idx]) < residue {
                     return false;
                 }
-                idx += 1;
+                idx = idx.wrapping_add(1);
             }
 
             let residue = x % 4575249731290429u64;
@@ -441,7 +441,7 @@ pub const extern "C" fn is_prime(x: u64) -> bool {
                 if residue.wrapping_mul(PRIME_INV_64[idx]) < residue {
                     return false;
                 }
-                idx += 1;
+                idx = idx.wrapping_add(1);
             }
 
             let residue = x % 18506541671175721u64;
@@ -450,7 +450,7 @@ pub const extern "C" fn is_prime(x: u64) -> bool {
                 if residue.wrapping_mul(PRIME_INV_64[idx]) < residue {
                     return false;
                 }
-                idx += 1;
+                idx = idx.wrapping_add(1);
             }
 
             let residue = x % 61247129307885343u64;
@@ -459,7 +459,7 @@ pub const extern "C" fn is_prime(x: u64) -> bool {
                 if residue.wrapping_mul(PRIME_INV_64[idx]) < residue {
                     return false;
                 }
-                idx += 1;
+                idx = idx.wrapping_add(1);
             }
 
             let residue = x % 536967265590991u64;
@@ -468,7 +468,7 @@ pub const extern "C" fn is_prime(x: u64) -> bool {
                 if residue.wrapping_mul(PRIME_INV_64[idx]) < residue {
                     return false;
                 }
-                idx += 1;
+                idx = idx.wrapping_add(1);
             }
 
             let residue = x % 3442087319857u64;
@@ -477,7 +477,7 @@ pub const extern "C" fn is_prime(x: u64) -> bool {
                 if residue.wrapping_mul(PRIME_INV_64[idx]) < residue {
                     return false;
                 }
-                idx += 1;
+                idx = idx.wrapping_add(1);
             }
         } //end if
     } // end conditional block
