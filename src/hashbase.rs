@@ -1,7 +1,8 @@
 #[rustfmt::skip]
 #[cfg(any(feature="table",feature="ssmr"))]
 /// Table of Fermat candidate bases
-pub const FERMAT_TABLE : [u16;262144] = [
+#[no_mangle]
+pub static FERMAT_TABLE : [u16;262144] = [
 //divisor: 16384 multiplier: 811484239 
 // hash(x)  = (x as u32).wrapping_mul(811484239)/16384 
  
