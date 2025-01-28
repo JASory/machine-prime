@@ -101,7 +101,7 @@ pub const fn param_search_128(n: u128) -> u128 {
         if nqr_128(d, n) {
             break;
         }
-        p = p.wrapping_sub(1);
+        p = p.wrapping_add(1);
     }
     p
 }
