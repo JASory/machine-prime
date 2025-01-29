@@ -1,6 +1,6 @@
 [package]
 name = "machine-prime"
-version = "1.5.3"
+version = "1.5.5"
 edition = "2021"
 author = ["JASory jasory@rust-cas.org"]
 description = "ne plus ultra primality testing for machine-sized integers"
