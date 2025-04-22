@@ -67,6 +67,9 @@ is_prime_wc is much more useful as it is faster against numbers that are already
   - Verifying Erastothenes sieves, and other primality tests; checking that prime_test(n) == is_prime_wc(n)
   - Verifying small primes used in prime certification, like the Pratt certificate
   - Searching for Fermat pseudoprimes; verifying that certain numbers that satisfy a^(n-1) mod n =1 are infact composite
+
+Machine-prime is wrapped in a more convenient library [c-prime](https://crates.io/crates/c-prime) and an optional dependency speed up in 
+Sorngard's [const-primes](https://crates.io/crates/const-primes) library. 
  
 ##  Notes
 See [Performance](https://github.com/JASory/machine-prime/blob/main/PERFORMANCE.md) for some benchmarks and 
