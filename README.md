@@ -86,3 +86,7 @@ Building for embedded systems has not been tested, however there is no known cau
 This software is in public domain, and can be constructed in a reproducible manner with the 
 [f-analysis](https://github.com/JASory/f-analysis) library, and Feitsma/Galway's base-2 
 pseudoprime table. It is [available on crates.io](https://crates.io/crates/machine-prime)
+
+Citation for the algorithm used to calculate the hashtable
+
+Viorel Wegner. _The Single-Shot Miller Rabin Test_. (2025). [ResearchGate](https://www.researchgate.net/publication/396531974_The_Single-Shot_Miller_Rabin_Test?_tp=eyJjb250ZXh0Ijp7ImZpcnN0UGFnZSI6ImxvZ2luIiwicGFnZSI6InNlYXJjaCIsInBvc2l0aW9uIjoicGFnZUhlYWRlciJ9fQ)
