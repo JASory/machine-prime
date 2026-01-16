@@ -95,8 +95,12 @@ pseudoprime table. It is [available on crates.io](https://crates.io/crates/machi
 
 References 
  QFT Algorithm - Sergei Khashin. [Evaluation of the Effectiveness of the Frobenius Primality Test](https://arxiv.org/pdf/1807.07249).2020
+ 
  Montgomery arithmetic routines - Ernest Mayer. [Efficient long division via Montgomery multiply](https://arxiv.org/abs/1303.0328). 2016.
+ 
  Lucas-V and Strong fermat test - Crandall, Pomerance. Primes: A Computational Perspective.2000
+ 
  Witness table adapted from the algorithm in this paper - Viorel Wegner. [The Single Shot Miller-Rabin Test](https://www.researchgate.net/publication/396531974_The_Single-Shot_Miller_Rabin_Test?_tp=eyJjb250ZXh0Ijp7ImZpcnN0UGFnZSI6ImxvZ2luIiwicGFnZSI6InNlYXJjaCIsInBvc2l0aW9uIjoicGFnZUhlYWRlciJ9fQ). 2025
+ 
  
  With substantial contribution by David Sparks.
