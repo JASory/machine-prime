@@ -93,7 +93,7 @@ This software is in public domain, and can be constructed in a reproducible mann
 [f-analysis](https://github.com/JASory/f-analysis) library, and Feitsma/Galway's base-2 
 pseudoprime table. It is [available on crates.io](https://crates.io/crates/machine-prime)
 
-References 
+## References 
  QFT Algorithm - Sergei Khashin. [Evaluation of the Effectiveness of the Frobenius Primality Test](https://arxiv.org/pdf/1807.07249).2020
  
  Montgomery arithmetic routines - Ernest Mayer. [Efficient long division via Montgomery multiply](https://arxiv.org/abs/1303.0328). 2016.
