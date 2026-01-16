@@ -1,14 +1,12 @@
 #[rustfmt::skip]
-#[cfg(any(feature="table",feature="ssmr"))]
-/// Table of Fermat candidate bases
+#[cfg(feature="ssmr")]
+/// Table of Fermat candidate witnesses
 #[no_mangle]
-pub static FERMAT_TABLE : [u16;262144] = [
+pub static FERMAT_WITNESS : [u16;262144] = [
 //divisor: 16384 multiplier: 811484239 
 // hash(x)  = (x as u32).wrapping_mul(811484239)/16384 
-
-  // ALERT: If you port this witness table, make sure that the strong fermat test checks that
-  // N is not a non-zero multiple of the witness selected, this can be ensured by setting 
-  // new_witness = witness%N The montgomery transform in this library automatically accounts for this. 	
+    // This table maps some composites {9,15} to a non-coprime witness, so if you try to port this 
+    // make sure that your fermat test does not pass them 
 	 133, 327, 485, 2561, 753, 163, 284, 391, 9252, 3144, 879, 1413, 566, 1109, 639, 4366,
 	 2362, 2047, 119, 287, 1647, 557, 4001, 402, 4144, 958, 1009, 364, 6382, 1513, 654, 995,
 	 184, 69, 217, 77, 3480, 57, 15202, 114, 1349, 793, 1506, 3733, 880, 1541, 349, 3538,
