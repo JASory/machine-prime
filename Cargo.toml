@@ -1,6 +1,6 @@
 [package]
 name = "machine-prime"
-version = "1.5.5"
+version = "1.5.6"
 edition = "2021"
 author = ["JASory jasory@rust-cas.org"]
 description = "ne plus ultra primality testing for machine-sized integers"
@@ -26,8 +26,8 @@ harness=false
 
 [features]
 lucas = [] # Adds Trial division and Lucas table
-table = [] # Swaps Lucas with hashtable
 ssmr = [] # Single shot branching
 wide = [] # 128-bit primality
+qft = [] # Khashin's QFT
 internal=[] # Exposes internal functions
-default = ["table"]
+default = ["ssmr"]
