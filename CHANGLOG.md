@@ -16,3 +16,8 @@ API changes
 - The Lucas test now uses isqrt to eliminate any possible perfect squares rather than checking the few known cases. is_prime_wc_128 is now guaranteed to finish, previously it was only conjectured,
 - Lucas' test truncated Jacobi symbol calculates slightly faster
 - mulinv2_128 calculates slightly faster   
+
+## Version 1.5.7
+
+### Changes
+ - Revert Montgomery transform for 128-bit arithmetic that errors for large N
