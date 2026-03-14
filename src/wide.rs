@@ -187,61 +187,62 @@ pub const fn mont_sub_128(x: u128, y: u128, n: u128) -> u128 {
     }
 }
 
-/// Written by David Sparks 
 /// Convert to Montgomery form, 128-bit form
 ///
 /// In: X, N where X < N
 ///
 /// Out: Mont(X,N)
-pub const fn to_mont_128(mut x: u128, n: u128) -> u128 {
-    // Normalize the divisor so its msbit is set.
-    debug_assert!(x < n);
-    let s = n.leading_zeros();
-    let divisor = n << s;
-    x <<= s;
-    debug_assert!(x < divisor);
- 
-     let (d1, d0) = split_to_u128(divisor);
-    // The body of this loop computes x = ((x as u192) << 64) % divisor.
-    // Repeating it twice achieves the desired computation.
-    // Because the low half of the 256-bit dividend is zero, there's no
-    // need to shift in additional low-order words, and we discard the
-    // quotient, so the two iterations are identical.
-    let mut i = 0;
-    while i < 2 {
-        i += 1;
-        if x >> 64 >= d1 {
-            // Exception path: avoid having q > u64::MAX, even temporarily.
-            let q = u64::MAX;
-            x = (x << 64).wrapping_sub(q as u128 * divisor);
-            continue;
-         }
+pub const fn to_mont_128(x: u128, n: u128) -> u128 {
+    const RADIX: u128 = 0x10000000000000000;
 
-        // Normal path: estimate quotient digit.  Maybe high, never low.
-        let (q, mut r) = ((x / d1) as u64, (x % d1) as u64);
-        let mut prod = q as u128 * d0;
-        // Now correct the quotient digit to include d0.
-        // (This loops at most twice, but more than one iteration is
-        // so rare that it's not worth unrolling; the slight gain from
-        // avoiding the test for a third iteration is negligible.)
-        while (prod >> 64) as u64 > r {
-            //q -=  1;
-            prod -= d0;
-            let carry;
-            (r, carry) = r.overflowing_add(d1 as u64);
-            if carry {
-                break;
-            }
+    let mut dividend = x;
+    let mut divisor = n;
+
+    let s = divisor.leading_zeros();
+    // Scale the values
+    dividend = dividend.wrapping_shl(s);
+    divisor = divisor.wrapping_shl(s);
+
+    let (d1, d0) = split_to_u128(divisor);
+
+    let (mut q1, mut rhat) = (dividend / d1, dividend % d1);
+
+    let mut prod = q1.wrapping_mul(d0);
+    let addend = RADIX.wrapping_mul(d1);
+    let mut prod2 = RADIX.wrapping_mul(rhat);
+
+    while q1 >= RADIX || prod > prod2 {
+        q1 = q1.wrapping_sub(1);
+        prod = prod.wrapping_sub(d0);
+        rhat = rhat.wrapping_add(d1);
+        prod2 = prod2.wrapping_add(addend);
+        if rhat >= RADIX {
+            break;
         }
-        // x = (x << 64).wrapping_sub(q * divisor);
-        // But since we already have r = x - q * d1 and prod = q * d0,
-        // we can optimize it a little, and avoid even keeping track of
-        // q explicitly.  r might have overflowed 64 bits, but this will
-        // wrap it back to the correct range.
-        x = ((r as u128) << 64).wrapping_sub(prod);
-     }
-     x >> s
+    }
 
+    let r21 = dividend
+        .wrapping_mul(RADIX)
+        .wrapping_sub(q1.wrapping_mul(divisor));
+
+    let (mut q0, mut rhat) = (r21 / d1, r21 % d1);
+
+    let mut prod = q0.wrapping_mul(d0);
+
+    while q0 >= RADIX || prod > RADIX.wrapping_mul(rhat) {
+        q0 = q0.wrapping_sub(1);
+        rhat = rhat.wrapping_add(d1);
+        prod = prod.wrapping_sub(d0);
+        if rhat >= RADIX {
+            break;
+        }
+    }
+
+    let r = (r21
+        .wrapping_mul(RADIX)
+        .wrapping_sub(q0.wrapping_mul(divisor)))
+        .wrapping_shr(s);
+    r
 }
 
 /// Product in Montgomery form, 128-bit form
